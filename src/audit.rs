@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use sha2::{Digest, Sha256};
+use std::fs;
+use std::io::Write;
+use std::path::Path;
 
 use crate::knowledge::KnowledgePatch;
 
@@ -49,6 +53,17 @@ impl LedgerEntry {
             patch: patch.clone(),
         }
     }
+}
+
+pub fn append_ledger(path: &Path, entry: &LedgerEntry) -> anyhow::Result<()> {
+    let line = serde_json::to_string(entry)?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    file.write_all(line.as_bytes())?;
+    file.write_all(b"\n")?;
+    Ok(())
 }
 
 fn hash_str(value: &str) -> String {

@@ -1,5 +1,8 @@
 mod audit;
+mod git_utils;
 mod knowledge;
+mod openai;
+mod repl;
 mod thread_store;
 mod vault;
 
@@ -7,11 +10,12 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::Value;
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::PathBuf;
 
-use crate::audit::LedgerEntry;
+use crate::audit::append_ledger;
+use crate::git_utils::git_commit;
 use crate::knowledge::{apply_patch, KnowledgePatch};
+use crate::repl::{run_repl, ReplOptions};
 use crate::thread_store::{append_event, build_event, create_thread, read_thread, EventType, Role};
 use crate::vault::{init_vault, resolve_vault};
 
@@ -36,6 +40,18 @@ enum Commands {
     Knowledge {
         #[command(subcommand)]
         command: KnowledgeCommand,
+    },
+    Repl {
+        #[arg(long)]
+        vault: Option<PathBuf>,
+        #[arg(long)]
+        thread: Option<PathBuf>,
+        #[arg(long)]
+        model: Option<String>,
+        #[arg(long, default_value_t = false)]
+        allow_commit: bool,
+        #[arg(long, default_value_t = 50)]
+        history: usize,
     },
 }
 
@@ -198,6 +214,21 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Commands::Repl {
+            vault,
+            thread,
+            model,
+            allow_commit,
+            history,
+        } => {
+            run_repl(ReplOptions {
+                vault,
+                thread,
+                model,
+                allow_commit,
+                history,
+            })?;
+        }
     }
     Ok(())
 }
@@ -206,39 +237,4 @@ fn parse_json(value: &str, label: &str) -> Result<Value> {
     serde_json::from_str(value).with_context(|| format!("parse {label} JSON"))
 }
 
-fn append_ledger(path: &Path, entry: &LedgerEntry) -> Result<()> {
-    let line = serde_json::to_string(entry)?;
-    let mut file = fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .with_context(|| format!("open ledger {}", path.display()))?;
-    use std::io::Write;
-    file.write_all(line.as_bytes())?;
-    file.write_all(b"\n")?;
-    Ok(())
-}
-
-fn git_commit(repo_root: &Path, files: &[PathBuf], message: &str) -> Result<()> {
-    let mut add = Command::new("git");
-    add.arg("-C").arg(repo_root).arg("add");
-    for file in files {
-        add.arg(file);
-    }
-    let status = add.status().context("git add")?;
-    if !status.success() {
-        return Err(anyhow::anyhow!("git add failed"));
-    }
-    let status = Command::new("git")
-        .arg("-C")
-        .arg(repo_root)
-        .arg("commit")
-        .arg("-m")
-        .arg(message)
-        .status()
-        .context("git commit")?;
-    if !status.success() {
-        return Err(anyhow::anyhow!("git commit failed"));
-    }
-    Ok(())
-}
+// ledger + git helpers live in modules
