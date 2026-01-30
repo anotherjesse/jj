@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use chrono::{DateTime, Local, Utc};
 use dotenvy::dotenv;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -92,8 +93,9 @@ pub fn run_repl(options: ReplOptions) -> Result<()> {
             None,
             None,
         );
+        let user_content = with_datetime(user_event.ts, input);
         append_event(&thread_path, user_event)?;
-        messages.push(json!({"role":"user","content": input}));
+        messages.push(json!({"role":"user","content": user_content}));
 
         loop {
             let response = client.chat(&messages, &tools)?;
@@ -112,8 +114,9 @@ pub fn run_repl(options: ReplOptions) -> Result<()> {
                     None,
                     None,
                 );
+                let assistant_content = with_datetime(assistant_event.ts, &content);
                 append_event(&thread_path, assistant_event)?;
-                messages.push(json!({"role":"assistant","content": content}));
+                messages.push(json!({"role":"assistant","content": assistant_content}));
                 break;
             }
 
@@ -247,9 +250,11 @@ fn load_history(thread_path: &Path, history: usize, messages: &mut Vec<Value>) -
                 };
                 match event.event_type {
                     EventType::UserMessage => {
+                        let content = with_datetime(event.ts, &content);
                         messages.push(json!({"role":"user","content": content}));
                     }
                     EventType::AssistantMessage => {
+                        let content = with_datetime(event.ts, &content);
                         messages.push(json!({"role":"assistant","content": content}));
                     }
                     _ => {}
@@ -274,6 +279,15 @@ fn tool_calls_payload(response: &ChatResponse) -> Result<Vec<Value>> {
         }));
     }
     Ok(payload)
+}
+
+fn with_datetime(ts: DateTime<Utc>, content: &str) -> String {
+    let local = ts.with_timezone(&Local).to_rfc3339();
+    if content.is_empty() {
+        format!("[datetime]: {local}")
+    } else {
+        format!("[datetime]: {local}\n{content}")
+    }
 }
 
 fn tool_schemas() -> Vec<Value> {
