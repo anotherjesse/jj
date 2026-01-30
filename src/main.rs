@@ -1,11 +1,17 @@
+mod audit;
+mod knowledge;
 mod thread_store;
 mod vault;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::Value;
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
+use crate::audit::LedgerEntry;
+use crate::knowledge::{apply_patch, KnowledgePatch};
 use crate::thread_store::{append_event, build_event, create_thread, read_thread, EventType, Role};
 use crate::vault::{init_vault, resolve_vault};
 
@@ -26,6 +32,10 @@ enum Commands {
     Thread {
         #[command(subcommand)]
         command: ThreadCommand,
+    },
+    Knowledge {
+        #[command(subcommand)]
+        command: KnowledgeCommand,
     },
 }
 
@@ -76,6 +86,24 @@ enum ThreadCommand {
         offset: Option<usize>,
         #[arg(long)]
         limit: Option<usize>,
+    },
+}
+
+#[derive(Subcommand)]
+enum KnowledgeCommand {
+    Apply {
+        #[arg(long)]
+        vault: Option<PathBuf>,
+        #[arg(long)]
+        patch: PathBuf,
+        #[arg(long)]
+        author: String,
+        #[arg(long)]
+        reason: String,
+        #[arg(long)]
+        proposal_id: Option<String>,
+        #[arg(long, default_value_t = false)]
+        commit: bool,
     },
 }
 
@@ -143,6 +171,33 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Commands::Knowledge { command } => match command {
+            KnowledgeCommand::Apply {
+                vault,
+                patch,
+                author,
+                reason,
+                proposal_id,
+                commit,
+            } => {
+                let vault = resolve_vault(vault);
+                let patch_content = fs::read_to_string(&patch)
+                    .with_context(|| format!("read patch {}", patch.display()))?;
+                let patch: KnowledgePatch = serde_json::from_str(&patch_content)
+                    .with_context(|| "parse patch json")?;
+                let result = apply_patch(&vault, patch, &author, &reason, proposal_id.clone())?;
+                let ledger_path = vault.join("audit/ledger.jsonl");
+                append_ledger(&ledger_path, &result.ledger_entry)?;
+                if commit {
+                    let repo_root = PathBuf::from(".");
+                    let message = match &proposal_id {
+                        Some(id) => format!("{id}: {reason}"),
+                        None => format!("memory: {reason}"),
+                    };
+                    git_commit(&repo_root, &[result.doc_path, ledger_path], &message)?;
+                }
+            }
+        },
     }
     Ok(())
 }
@@ -151,4 +206,39 @@ fn parse_json(value: &str, label: &str) -> Result<Value> {
     serde_json::from_str(value).with_context(|| format!("parse {label} JSON"))
 }
 
-// ledger + git commit support added in later milestone
+fn append_ledger(path: &Path, entry: &LedgerEntry) -> Result<()> {
+    let line = serde_json::to_string(entry)?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .with_context(|| format!("open ledger {}", path.display()))?;
+    use std::io::Write;
+    file.write_all(line.as_bytes())?;
+    file.write_all(b"\n")?;
+    Ok(())
+}
+
+fn git_commit(repo_root: &Path, files: &[PathBuf], message: &str) -> Result<()> {
+    let mut add = Command::new("git");
+    add.arg("-C").arg(repo_root).arg("add");
+    for file in files {
+        add.arg(file);
+    }
+    let status = add.status().context("git add")?;
+    if !status.success() {
+        return Err(anyhow::anyhow!("git add failed"));
+    }
+    let status = Command::new("git")
+        .arg("-C")
+        .arg(repo_root)
+        .arg("commit")
+        .arg("-m")
+        .arg(message)
+        .status()
+        .context("git commit")?;
+    if !status.success() {
+        return Err(anyhow::anyhow!("git commit failed"));
+    }
+    Ok(())
+}
