@@ -70,6 +70,7 @@ pub fn apply_patch(
     reason: &str,
     proposal_id: Option<String>,
 ) -> Result<ApplyResult> {
+    let patch_for_ledger = patch.clone();
     let doc_path = vault_path.join(&patch.doc_path);
     if !doc_path.starts_with(vault_path) {
         return Err(anyhow!("doc_path must be within vault"));
@@ -86,6 +87,7 @@ pub fn apply_patch(
     } else {
         let id = patch
             .doc_id
+            .clone()
             .unwrap_or_else(|| format!("mem_{}", Ulid::new()));
         let title = patch.title.clone().ok_or_else(|| anyhow!("title required for new doc"))?;
         let doc_type = patch
@@ -167,7 +169,7 @@ pub fn apply_patch(
         reason,
         proposal_id,
         "upsert_knowledge",
-        &patch,
+        &patch_for_ledger,
         prior_content.as_deref(),
         &new_content,
         &front_matter.id,

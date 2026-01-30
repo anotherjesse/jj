@@ -22,7 +22,7 @@ test -f "$THREAD_PATH"
 echo "==> append event"
 cargo run "${BIN_ARGS[@]}" --quiet -- thread append \
   --thread "$THREAD_PATH" \
-  --event-type user_message \
+  --event-type user-message \
   --role user \
   --content "hello"
 
