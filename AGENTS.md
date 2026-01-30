@@ -16,6 +16,13 @@ Common commands:
 - `cargo run -- thread create --vault jj_vault`
 - `cargo run -- repl --vault jj_vault`
 - `scripts/verify.sh`
+- `scripts/smoke_openai.sh`
+
+Using `just` (if installed):
+- `just verify`
+- `just smoketest`
+- `just vault-init`
+- `just repl`
 
 ## Repo layout (current)
 - `plan.md`: build spec + phased plan
