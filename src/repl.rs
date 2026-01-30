@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use crate::audit::append_ledger;
 use crate::git_utils::git_commit;
-use crate::knowledge::{apply_patch, KnowledgePatch};
+use crate::knowledge::{apply_patch, read_doc, KnowledgePatch};
 use crate::openai::{ChatResponse, OpenAIClient};
 use crate::thread_store::{
     append_event, build_event, create_thread, read_thread, EventType, Role, ThreadEvent,
@@ -380,6 +380,38 @@ fn tool_schemas() -> Vec<Value> {
                     "required": ["patch", "author", "reason"]
                 }
             }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "knowledge_read",
+                "description": "Read a knowledge document from the vault.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "doc_path": { "type": "string", "description": "Path relative to the vault root, e.g. knowledge/prefs/interaction.md" },
+                        "include_body": { "type": "boolean", "description": "Include body content (default true)." },
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["doc_path", "reason"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "knowledge_search",
+                "description": "Search knowledge documents for a substring match.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string" },
+                        "limit": { "type": "integer" },
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["query", "reason"]
+                }
+            }
         })
     ]
 }
@@ -501,6 +533,52 @@ fn execute_tool(
                 "ledger_id": result.ledger_entry.ledger_id
             }))
         }
+        "knowledge_read" => {
+            let doc_path = args
+                .get("doc_path")
+                .and_then(|val| val.as_str())
+                .ok_or_else(|| anyhow!("doc_path required"))?;
+            let include_body = args
+                .get("include_body")
+                .and_then(|val| val.as_bool())
+                .unwrap_or(true);
+            let full_path = vault.join(doc_path);
+            if !full_path.starts_with(vault) {
+                return Err(anyhow!("doc_path must be within vault"));
+            }
+            let doc = read_doc(&full_path)?;
+            if include_body {
+                Ok(json!({ "doc_path": doc_path, "front_matter": doc.front_matter, "body": doc.body }))
+            } else {
+                Ok(json!({ "doc_path": doc_path, "front_matter": doc.front_matter }))
+            }
+        }
+        "knowledge_search" => {
+            let query = args
+                .get("query")
+                .and_then(|val| val.as_str())
+                .ok_or_else(|| anyhow!("query required"))?
+                .to_lowercase();
+            let limit = args.get("limit").and_then(|val| val.as_u64()).unwrap_or(10) as usize;
+            let root = vault.join("knowledge");
+            let mut matches = Vec::new();
+            for path in walk_markdown(&root)? {
+                let content = fs::read_to_string(&path)?;
+                let haystack = content.to_lowercase();
+                if let Some(idx) = haystack.find(&query) {
+                    let excerpt = excerpt_at(&content, idx, 80);
+                    let rel = path.strip_prefix(vault).unwrap_or(&path).to_string_lossy().to_string();
+                    matches.push(json!({
+                        "doc_path": rel,
+                        "excerpt": excerpt
+                    }));
+                    if matches.len() >= limit {
+                        break;
+                    }
+                }
+            }
+            Ok(json!({ "count": matches.len(), "matches": matches }))
+        }
         _ => Err(anyhow!("unknown tool: {name}")),
     }
 }
@@ -525,4 +603,31 @@ fn parse_role(value: &str) -> Result<Role> {
         "system" => Ok(Role::System),
         _ => Err(anyhow!("invalid role: {value}")),
     }
+}
+
+fn walk_markdown(root: &Path) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    if !root.exists() {
+        return Ok(files);
+    }
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                files.push(path);
+            }
+        }
+    }
+    Ok(files)
+}
+
+fn excerpt_at(content: &str, idx: usize, radius: usize) -> String {
+    let start = idx.saturating_sub(radius);
+    let end = usize::min(content.len(), idx + radius);
+    let snippet = &content[start..end];
+    snippet.replace('\n', " ")
 }

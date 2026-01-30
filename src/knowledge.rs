@@ -63,6 +63,12 @@ pub struct ApplyResult {
     pub ledger_entry: LedgerEntry,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnowledgeDoc {
+    pub front_matter: FrontMatter,
+    pub body: String,
+}
+
 pub fn apply_patch(
     vault_path: &Path,
     patch: KnowledgePatch,
@@ -177,6 +183,13 @@ pub fn apply_patch(
     );
 
     Ok(ApplyResult { doc_path, ledger_entry })
+}
+
+pub fn read_doc(path: &Path) -> Result<KnowledgeDoc> {
+    let content = fs::read_to_string(path)
+        .with_context(|| format!("read {}", path.display()))?;
+    let (front_matter, body) = parse_markdown(&content)?;
+    Ok(KnowledgeDoc { front_matter, body })
 }
 
 fn parse_markdown(content: &str) -> Result<(FrontMatter, String)> {
