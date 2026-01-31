@@ -14,7 +14,7 @@ Prereqs: Rust toolchain, valid `.env` with `OPENAI_API_KEY`.
 Common commands:
 - `cargo run -- vault init --path jj_vault`
 - `cargo run -- thread create --vault jj_vault`
-- `cargo run -- repl --vault jj_vault`
+- `cargo run -- chat --vault jj_vault`
 - `scripts/verify.sh`
 - `scripts/smoke_openai.sh`
 
@@ -25,7 +25,7 @@ Using `just` (if installed):
 - `just verify`
 - `just smoketest`
 - `just vault-init`
-- `just repl`
+- `just chat`
 - `just embed-index`
 
 ## Repo layout (current)

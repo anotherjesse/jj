@@ -34,37 +34,50 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Initialize or manage a vault
     Vault {
         #[command(subcommand)]
         command: VaultCommand,
     },
+    /// Create, append to, or read conversation threads
     Thread {
         #[command(subcommand)]
         command: ThreadCommand,
     },
+    /// Apply knowledge patches to the vault
     Knowledge {
         #[command(subcommand)]
         command: KnowledgeCommand,
     },
+    /// Build the embedding index for knowledge search
     Index {
+        /// Vault path (default: jj_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
     },
-    Repl {
+    /// Start an interactive chat session with the agent
+    Chat {
+        /// Vault path (default: jj_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
+        /// Resume an existing thread
         #[arg(long)]
         thread: Option<PathBuf>,
+        /// Override the LLM model
         #[arg(long)]
         model: Option<String>,
+        /// Allow the agent to commit changes to git
         #[arg(long, default_value_t = false)]
         allow_commit: bool,
+        /// Number of thread history events to load
         #[arg(long, default_value_t = 50)]
         history: usize,
     },
+    /// Ingest a markdown document into the vault as a source
     Ingest {
         /// Path to the markdown file to ingest
         file: PathBuf,
+        /// Vault path (default: jj_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Provenance string (e.g., "chatgpt-export", "notion", "manual")
@@ -76,6 +89,7 @@ enum Commands {
         /// Override document title (default: derived from filename)
         #[arg(long)]
         title: Option<String>,
+        /// Override the LLM model
         #[arg(long)]
         model: Option<String>,
     },
@@ -83,7 +97,9 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum VaultCommand {
+    /// Create a new vault directory structure
     Init {
+        /// Where to create the vault (default: jj_vault)
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -91,41 +107,56 @@ enum VaultCommand {
 
 #[derive(Subcommand)]
 enum ThreadCommand {
+    /// Create a new conversation thread
     Create {
+        /// Vault path (default: jj_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
+        /// Custom thread ID (default: auto-generated)
         #[arg(long)]
         thread_id: Option<String>,
+        /// Date override as YYYY-MM-DD
         #[arg(long)]
         date: Option<String>,
     },
+    /// Append an event to an existing thread
     Append {
+        /// Path to the thread JSONL file
         #[arg(long)]
         thread: PathBuf,
+        /// Event type (e.g., message, tool_call, tool_result)
         #[arg(long)]
         event_type: EventType,
+        /// Role (e.g., user, assistant, system, tool)
         #[arg(long)]
         role: Role,
         #[arg(long)]
         thread_id: Option<String>,
         #[arg(long)]
         content: Option<String>,
+        /// Content as raw JSON
         #[arg(long)]
         content_json: Option<String>,
         #[arg(long)]
         tool_name: Option<String>,
+        /// Tool arguments as JSON
         #[arg(long)]
         tool_args: Option<String>,
+        /// Tool result as JSON
         #[arg(long)]
         tool_result: Option<String>,
         #[arg(long)]
         reason: Option<String>,
     },
+    /// Read events from a thread
     Read {
+        /// Path to the thread JSONL file
         #[arg(long)]
         thread: PathBuf,
+        /// Skip this many events from the start
         #[arg(long)]
         offset: Option<usize>,
+        /// Maximum number of events to return
         #[arg(long)]
         limit: Option<usize>,
     },
@@ -133,17 +164,24 @@ enum ThreadCommand {
 
 #[derive(Subcommand)]
 enum KnowledgeCommand {
+    /// Apply a JSON knowledge patch to the vault
     Apply {
+        /// Vault path (default: jj_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
+        /// Path to the patch JSON file
         #[arg(long)]
         patch: PathBuf,
+        /// Author attribution for the change
         #[arg(long)]
         author: String,
+        /// Human-readable reason for the change
         #[arg(long)]
         reason: String,
+        /// Link to the originating proposal
         #[arg(long)]
         proposal_id: Option<String>,
+        /// Commit the change to git after applying
         #[arg(long, default_value_t = false)]
         commit: bool,
     },
@@ -252,7 +290,7 @@ fn main() -> Result<()> {
             );
             println!("Index: {}", stats.index_path.display());
         }
-        Commands::Repl {
+        Commands::Chat {
             vault,
             thread,
             model,

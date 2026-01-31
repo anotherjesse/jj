@@ -18,8 +18,8 @@ vault-init path="jj_vault":
 thread-create vault="jj_vault":
 	cargo run -- thread create --vault {{vault}}
 
-repl vault="jj_vault":
-	cargo run -- repl --vault {{vault}}
+chat vault="jj_vault":
+	cargo run -- chat --vault {{vault}}
 
 embed-index vault="jj_vault":
 	cargo run -- index --vault {{vault}}
