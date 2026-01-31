@@ -1,7 +1,7 @@
 ---
-id: src_01KGAHK5ZJC13ZQXP7FV545M72
+id: src_01KGAKH3Q294ST9VDHFF0Q9Y8A
 title: tech-stack
-ingested_at: 2026-01-31T17:28:44.786023+00:00
+ingested_at: 2026-01-31T18:02:34.082248+00:00
 original_path: /Users/jesse/cto/context/tech-stack.md
 tags: []
 processing_status: complete
