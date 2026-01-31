@@ -10,7 +10,9 @@ use crate::audit::LedgerEntry;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceRef {
+    #[serde(default)]
     pub thread_id: String,
+    #[serde(default)]
     pub event_ids: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub excerpt_hash: Option<String>,

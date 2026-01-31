@@ -20,6 +20,8 @@ pub struct AgentConfig {
     pub thread_path: PathBuf,
     pub max_turns: usize,
     pub allow_commit: bool,
+    /// If set, only expose these tools (by name). If None, expose all.
+    pub tool_filter: Option<Vec<String>>,
 }
 
 pub fn run_agent_loop(
@@ -27,7 +29,20 @@ pub fn run_agent_loop(
     initial_messages: Vec<Value>,
     client: &OpenAIClient,
 ) -> Result<Vec<Value>> {
-    let tools = tool_schemas();
+    let all_tools = tool_schemas();
+    let tools: Vec<Value> = match &config.tool_filter {
+        Some(names) => all_tools
+            .into_iter()
+            .filter(|t| {
+                t.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .map(|n| names.iter().any(|allowed| allowed == n))
+                    .unwrap_or(false)
+            })
+            .collect(),
+        None => all_tools,
+    };
     let mut messages = initial_messages;
 
     for turn in 0..config.max_turns {
@@ -225,7 +240,19 @@ pub fn tool_schemas() -> Vec<Value> {
                     "properties": {
                         "patch": {
                             "type": "object",
-                            "description": "Knowledge patch. Fields: doc_path (required, vault-relative path), title (required for new), type (required for new, e.g. source_summary/project/person/preference/system), status, confidence (0-1), tags_add (array), tags_remove (array), body_append (markdown string - THE BODY CONTENT), sources_add (array of {thread_id, event_ids}), supersedes_add (array of doc IDs)"
+                            "properties": {
+                                "doc_path": { "type": "string", "description": "Path relative to vault root, e.g. summaries/sources/my-doc.md or knowledge/projects/foo.md" },
+                                "title": { "type": "string", "description": "Document title (required for new docs)" },
+                                "type": { "type": "string", "description": "Doc type: source_summary, project, person, preference, system (required for new docs)" },
+                                "status": { "type": "string", "description": "e.g. active (default)" },
+                                "confidence": { "type": "number", "description": "0.0-1.0 confidence score" },
+                                "tags_add": { "type": "array", "items": { "type": "string" }, "description": "Tags to add" },
+                                "tags_remove": { "type": "array", "items": { "type": "string" }, "description": "Tags to remove" },
+                                "body_append": { "type": "string", "description": "Markdown content to write as the document body. THIS IS HOW YOU WRITE CONTENT. Without it the doc will be empty." },
+                                "sources_add": { "type": "array", "items": { "type": "object", "properties": { "thread_id": { "type": "string" }, "event_ids": { "type": "array", "items": { "type": "string" } } } }, "description": "Source references (optional)" },
+                                "supersedes_add": { "type": "array", "items": { "type": "string" }, "description": "IDs of docs this supersedes" }
+                            },
+                            "required": ["doc_path"]
                         },
                         "author": { "type": "string" },
                         "reason": { "type": "string" },

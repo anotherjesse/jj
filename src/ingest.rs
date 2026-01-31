@@ -135,6 +135,11 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
         thread_path: thread_path.clone(),
         max_turns: 20,
         allow_commit: false,
+        tool_filter: Some(vec![
+            "knowledge_apply".into(),
+            "knowledge_read".into(),
+            "knowledge_search".into(),
+        ]),
     };
 
     // Snapshot proposal count before ingestion

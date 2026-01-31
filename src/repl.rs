@@ -99,6 +99,7 @@ pub fn run_repl(options: ReplOptions) -> Result<()> {
             thread_path: thread_path.clone(),
             max_turns: 20,
             allow_commit: options.allow_commit,
+            tool_filter: None,
         };
         messages = run_agent_loop(&config, messages, &client)?;
     }
