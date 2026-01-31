@@ -4,7 +4,7 @@ set -euo pipefail
 : "${OPENAI_API_KEY:?OPENAI_API_KEY is required}"
 
 BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com}"
-MODEL="${OPENAI_MODEL:-gpt-4.1-mini}"
+MODEL="${OPENAI_MODEL:-gpt-5.2-2025-12-11}"
 
 echo "==> OpenAI smoke test ($MODEL)"
 

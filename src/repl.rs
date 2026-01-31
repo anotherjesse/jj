@@ -57,7 +57,7 @@ pub fn run_repl(options: ReplOptions) -> Result<()> {
     let model = options
         .model
         .or_else(|| env::var("OPENAI_MODEL").ok())
-        .unwrap_or_else(|| "gpt-4.1-mini".to_string());
+        .unwrap_or_else(|| "gpt-5.2-2025-12-11".to_string());
 
     let mut client = OpenAIClient::new(api_key, base_url, model.clone());
     let tools = tool_schemas();

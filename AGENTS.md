@@ -18,6 +18,9 @@ Common commands:
 - `scripts/verify.sh`
 - `scripts/smoke_openai.sh`
 
+Defaults:
+- OpenAI model defaults to `gpt-5.2-2025-12-11` unless `OPENAI_MODEL` is set.
+
 Using `just` (if installed):
 - `just verify`
 - `just smoketest`
