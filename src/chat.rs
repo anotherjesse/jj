@@ -26,11 +26,25 @@ pub struct ChatOptions {
     pub model: Option<String>,
     pub allow_commit: bool,
     pub history: usize,
+    pub direct: bool,
 }
 
 pub fn run_chat(options: ChatOptions) -> Result<()> {
     dotenv().ok();
 
+    // If not --direct, try daemon mode
+    if !options.direct {
+        if crate::gateway::daemon_status()? {
+            return run_chat_daemon(options);
+        }
+        // Daemon not running — fall through to direct mode
+        eprintln!("(daemon not running, using direct mode)");
+    }
+
+    run_chat_direct(options)
+}
+
+fn run_chat_direct(options: ChatOptions) -> Result<()> {
     let vault = resolve_vault(options.vault);
     if !vault.exists() {
         init_vault(&vault)?;
@@ -117,6 +131,154 @@ pub fn run_chat(options: ChatOptions) -> Result<()> {
     Ok(())
 }
 
+/// Run chat via the gateway daemon over WebSocket.
+fn run_chat_daemon(options: ChatOptions) -> Result<()> {
+    // Build a tokio runtime for the async WS client
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(run_chat_daemon_async(options))
+}
+
+async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
+    use crate::gateway::cli_client;
+    use futures_util::SinkExt;
+    use tokio_tungstenite::tungstenite::Message;
+
+    let (mut write, mut read) = cli_client::connect().await?;
+
+    // Determine session key
+    let session_key = options
+        .thread
+        .as_ref()
+        .and_then(|p| p.file_stem())
+        .and_then(|s| s.to_str())
+        .unwrap_or("main")
+        .to_string();
+
+    // Open/join the session
+    let payload = cli_client::request(
+        &mut write,
+        &mut read,
+        "session.open",
+        json!({"session_key": session_key}),
+    )
+    .await?;
+    let thread_id = payload
+        .get("thread_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("?");
+
+    println!("JJ REPL (daemon). Session: {session_key}, Thread: {thread_id}");
+    println!("Type /help for commands.");
+
+    // Spawn a background task to print incoming events
+    let (stop_tx, mut stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let event_task = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                msg = futures_util::StreamExt::next(&mut read) => {
+                    match msg {
+                        Some(Ok(Message::Text(text))) => {
+                            if let Ok(val) = serde_json::from_str::<Value>(&text) {
+                                let event_type = val.get("event").and_then(|v| v.as_str()).unwrap_or("");
+                                match event_type {
+                                    "delta" => {
+                                        if let Some(text) = val.get("payload").and_then(|p| p.get("text")).and_then(|t| t.as_str()) {
+                                            print!("{text}");
+                                            use std::io::Write;
+                                            let _ = std::io::stdout().flush();
+                                        }
+                                    }
+                                    "final" => {
+                                        if let Some(content) = val.get("payload").and_then(|p| p.get("content")).and_then(|c| c.as_str()) {
+                                            println!("{content}");
+                                        }
+                                    }
+                                    "tool_activity" => {
+                                        if let Some(name) = val.get("payload").and_then(|p| p.get("tool_name")).and_then(|n| n.as_str()) {
+                                            eprintln!("[tool: {name}]");
+                                        }
+                                    }
+                                    "error" => {
+                                        if let Some(msg) = val.get("payload").and_then(|p| p.get("message")).and_then(|m| m.as_str()) {
+                                            eprintln!("Error: {msg}");
+                                        }
+                                    }
+                                    "user_message" => {} // we sent this, ignore
+                                    _ => {
+                                        // Response frames (type: "res") — ignore, handled by request()
+                                    }
+                                }
+                            }
+                        }
+                        Some(Ok(Message::Close(_))) | None => break,
+                        _ => {}
+                    }
+                }
+                _ = &mut stop_rx => break,
+            }
+        }
+    });
+
+    // REPL loop on the main thread (rustyline blocks)
+    let mut rl = rustyline::DefaultEditor::new()?;
+    loop {
+        let line = match rl.readline("jj> ") {
+            Ok(line) => line,
+            Err(rustyline::error::ReadlineError::Interrupted) => continue,
+            Err(rustyline::error::ReadlineError::Eof) => break,
+            Err(err) => return Err(err.into()),
+        };
+        let input = line.trim();
+        if input.is_empty() {
+            continue;
+        }
+        rl.add_history_entry(input)?;
+
+        if input == "/exit" || input == "/quit" {
+            break;
+        }
+        if input == "/help" {
+            println!("Commands:");
+            println!("  /help           Show this help");
+            println!("  /exit, /quit    Exit the REPL");
+            println!("  /sessions       List all sessions");
+            println!("  /session <key>  Switch to a different session");
+            continue;
+        }
+        if input == "/sessions" {
+            let frame = json!({
+                "type": "req",
+                "id": ulid::Ulid::new().to_string(),
+                "method": "session.list",
+                "params": {},
+            });
+            write
+                .send(Message::Text(serde_json::to_string(&frame)?.into()))
+                .await?;
+            // Response will be printed by event task (not ideal, but works for now)
+            continue;
+        }
+
+        // Send user message
+        let frame = json!({
+            "type": "req",
+            "id": ulid::Ulid::new().to_string(),
+            "method": "session.send",
+            "params": {
+                "session_key": session_key,
+                "content": input,
+            },
+        });
+        write
+            .send(Message::Text(serde_json::to_string(&frame)?.into()))
+            .await?;
+    }
+
+    let _ = stop_tx.send(());
+    event_task.abort();
+    Ok(())
+}
+
 fn handle_command(
     input: &str,
     client: &mut OpenAIClient,
@@ -164,7 +326,7 @@ fn handle_command(
     Ok(true)
 }
 
-fn load_system_prompt(vault: &Path) -> Result<String> {
+pub fn load_system_prompt(vault: &Path) -> Result<String> {
     let path = vault.join("prompts/jj.system.md");
     let base = if path.exists() {
         fs::read_to_string(&path)

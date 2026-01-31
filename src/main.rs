@@ -2,6 +2,7 @@ mod agent;
 mod audit;
 mod embedding_index;
 mod embeddings;
+mod gateway;
 mod git_utils;
 mod ingest;
 mod knowledge;
@@ -76,6 +77,9 @@ enum Commands {
         /// Number of thread history events to load
         #[arg(long, default_value_t = 50)]
         history: usize,
+        /// Skip daemon and run agent loop directly (sync, in-process)
+        #[arg(long, default_value_t = false)]
+        direct: bool,
     },
     /// Backfill one-line summaries for knowledge docs missing them
     BackfillSummaries {
@@ -88,6 +92,11 @@ enum Commands {
         /// Dry run: show what would be updated without writing
         #[arg(long, default_value_t = false)]
         dry_run: bool,
+    },
+    /// Manage the gateway daemon
+    Gateway {
+        #[command(subcommand)]
+        command: GatewayCommand,
     },
     /// Ingest a markdown document into the vault as a source
     Ingest {
@@ -191,6 +200,16 @@ enum ThreadCommand {
 }
 
 #[derive(Subcommand)]
+enum GatewayCommand {
+    /// Start the gateway daemon
+    Start,
+    /// Stop the gateway daemon
+    Stop,
+    /// Check if the gateway daemon is running
+    Status,
+}
+
+#[derive(Subcommand)]
 enum KnowledgeCommand {
     /// Apply a JSON knowledge patch to the vault
     Apply {
@@ -215,9 +234,37 @@ enum KnowledgeCommand {
     },
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Commands::Gateway { command } => {
+            match command {
+                GatewayCommand::Start => {
+                    tracing_subscriber::fmt()
+                        .with_env_filter(
+                            tracing_subscriber::EnvFilter::try_from_default_env()
+                                .unwrap_or_else(|_| "info".into()),
+                        )
+                        .init();
+                    gateway::run_daemon().await?;
+                }
+                GatewayCommand::Stop => {
+                    gateway::stop_daemon()?;
+                }
+                GatewayCommand::Status => {
+                    let running = gateway::daemon_status()?;
+                    if running {
+                        let dir = gateway::gateway_dir()?;
+                        let pid = gateway::read_pid(&dir).map(|p| p.to_string()).unwrap_or_else(|| "?".into());
+                        let port = gateway::resolve_port();
+                        println!("gateway is running (pid {pid}, port {port})");
+                    } else {
+                        println!("gateway is not running");
+                    }
+                }
+            }
+        }
         Commands::Vault { command } => match command {
             VaultCommand::Init { path } => {
                 let vault = resolve_vault(path);
@@ -347,6 +394,7 @@ fn main() -> Result<()> {
             model,
             allow_commit,
             history,
+            direct,
         } => {
             let thread = if last {
                 let v = resolve_vault(vault.clone());
@@ -363,6 +411,7 @@ fn main() -> Result<()> {
                 model,
                 allow_commit,
                 history,
+                direct,
             })?;
         }
         Commands::BackfillSummaries { vault, model, dry_run } => {
