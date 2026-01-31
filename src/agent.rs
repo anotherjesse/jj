@@ -117,7 +117,7 @@ pub fn run_agent_loop(
     Ok(messages)
 }
 
-fn with_datetime(ts: DateTime<Utc>, content: &str) -> String {
+pub fn with_datetime(ts: DateTime<Utc>, content: &str) -> String {
     let local = ts.with_timezone(&Local).to_rfc3339();
     if content.is_empty() {
         format!("[datetime]: {local}")

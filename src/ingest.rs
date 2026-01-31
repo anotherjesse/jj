@@ -137,14 +137,17 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
         allow_commit: false,
     };
 
+    // Snapshot proposal count before ingestion
+    let proposals_before = count_proposals(&vault);
+
     println!("Running ingestion agent...");
     let _final_messages = run_agent_loop(&config, initial_messages, &client)?;
 
     // Update processing status to complete
     update_processing_status(&source_path, "complete")?;
 
-    // Count proposals created
-    let proposal_count = count_new_proposals(&vault);
+    // Count new proposals created during ingestion
+    let proposal_count = count_proposals(&vault).saturating_sub(proposals_before);
 
     // Embed (best effort)
     let summary_path = vault.join("summaries/sources").join(format!("{slug}.md"));
@@ -156,7 +159,7 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
     }
 
     // Git commit (best effort)
-    let repo_root = PathBuf::from(".");
+    let repo_root = vault.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
     let msg = format!(
         "ingest: {} from {}",
         slug,
@@ -260,15 +263,22 @@ fn default_ingest_prompt() -> String {
 
 fn update_processing_status(source_path: &Path, status: &str) -> Result<()> {
     let content = fs::read_to_string(source_path)?;
-    let updated = content.replace(
-        "processing_status: processing",
-        &format!("processing_status: {status}"),
-    );
-    fs::write(source_path, updated)?;
+    // Only replace within YAML frontmatter (between first two "---" lines)
+    if let Some(end) = content.strip_prefix("---\n").and_then(|rest| rest.find("\n---\n")) {
+        let frontmatter = &content[4..4 + end];
+        let updated_fm = frontmatter.replace(
+            "processing_status: processing",
+            &format!("processing_status: {status}"),
+        );
+        let mut out = String::from("---\n");
+        out.push_str(&updated_fm);
+        out.push_str(&content[4 + end..]);
+        fs::write(source_path, out)?;
+    }
     Ok(())
 }
 
-fn count_new_proposals(vault: &Path) -> usize {
+fn count_proposals(vault: &Path) -> usize {
     let proposals_dir = vault.join("inbox/proposals");
     if !proposals_dir.exists() {
         return 0;

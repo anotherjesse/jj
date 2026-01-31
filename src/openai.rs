@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use reqwest::blocking::Client;
 use serde_json::{json, Value};
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct ToolCall {
@@ -24,10 +25,14 @@ pub struct OpenAIClient {
 
 impl OpenAIClient {
     pub fn new(api_key: String, base_url: String, model: String) -> Self {
+        let http = Client::builder()
+            .timeout(Duration::from_secs(300))
+            .build()
+            .expect("build http client");
         Self {
             api_key,
             base_url,
-            http: Client::new(),
+            http,
             model,
         }
     }

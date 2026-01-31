@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Local, Utc};
 use dotenvy::dotenv;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -8,7 +7,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::agent::{run_agent_loop, tool_schemas, AgentConfig};
+use crate::agent::{run_agent_loop, tool_schemas, with_datetime, AgentConfig};
 use crate::openai::OpenAIClient;
 use crate::thread_store::{
     append_event, build_event, create_thread, read_thread, EventType, Role, ThreadEvent,
@@ -192,11 +191,3 @@ fn load_history(thread_path: &Path, history: usize, messages: &mut Vec<Value>) -
     Ok(())
 }
 
-fn with_datetime(ts: DateTime<Utc>, content: &str) -> String {
-    let local = ts.with_timezone(&Local).to_rfc3339();
-    if content.is_empty() {
-        format!("[datetime]: {local}")
-    } else {
-        format!("[datetime]: {local}\n{content}")
-    }
-}
