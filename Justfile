@@ -24,5 +24,20 @@ chat vault="jj_vault":
 embed-index vault="jj_vault":
 	cargo run -- index --vault {{vault}}
 
+gateway-start:
+	cargo run -- gateway start
+
+gateway-stop:
+	cargo run -- gateway stop
+
+gateway-status:
+	cargo run -- gateway status
+
+gateway-open:
+	#!/usr/bin/env bash
+	token=$(cat ~/.jj/gateway/token 2>/dev/null || echo "")
+	port=${JJ_GATEWAY_PORT:-9123}
+	open "http://127.0.0.1:${port}/?token=${token}"
+
 install:
 	cargo install --path . --root ~/.local
