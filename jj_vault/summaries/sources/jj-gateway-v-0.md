@@ -1,5 +1,5 @@
 ---
-id: mem_01KGAHB6MZ6CGJNQKQSTC1JQTY
+id: mem_01KGAKRM61GAEGM8XQQNKDBZ1V
 title: JJ Gateway v0.1 — Formal Plan / Spec (CLI + Telegram)
 type: source_summary
 status: active
@@ -11,23 +11,22 @@ tags:
 - telegram
 - event-sourcing
 - websocket
-confidence: 0.9
-created_at: 2026-01-31T17:24:23.327903Z
-updated_at: 2026-01-31T17:24:23.327903Z
+confidence: 0.84
+created_at: 2026-01-31T18:06:40.321382Z
+updated_at: 2026-01-31T18:06:40.321382Z
 sources:
 - thread_id: ''
   event_ids:
-  - src_01KGAH9QWXDTVYBKPNG42FDGDE
+  - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
 ---
 ## Summary
+This document specifies **JJ Gateway v0.1**, a first shippable “Gateway + Agent Loop” with two user-facing channels: a local **CLI REPL** (`jj chat`) and a **Telegram bot**. The **Gateway daemon** (`jj gateway`) is the control plane: all inbound/outbound messages flow through it, and it owns persistence, session coordination, and the agent execution loop.
 
-JJ Gateway v0.1 specifies a first shippable “Gateway + Agent Loop” system with two message channels—local CLI (`jj chat`) and Telegram bot—both routed through a single local daemon (`jj gateway`). The Gateway is the control plane: it manages sessions, persists transcripts, coordinates a per-session serialized agent run loop (LLM streaming), and routes outbound responses back to the originating channel.
+Core design principles are **event sourcing** and **crash-only** operation: each session has an **append-only JSONL transcript** (source of truth) and a small **sessions index** (`sessions.json`) mapping stable `session_key` (e.g., `main`, `tg:<chat_id>`) to internal `session_id` and metadata. The system must be **restart-safe**, with **idempotency keys** on side-effecting operations and inbound message dedupe (especially for Telegram polling retries).
 
-Core design principles: session key is the unit of consistency; all state is derived from an append-only event log (JSONL transcript per session); the daemon is crash-only and restart-safe via replay/rehydration from `sessions.json` + transcripts; idempotency is required to make retries safe and prevent duplicate side effects (notably for Telegram update delivery and client reconnect retries).
+Architecture includes: (1) Gateway core (session manager, run coordinator with per-session serialization, model-provider interface, internal event bus, channel router), (2) CLI adapter speaking a Gateway API, and (3) Telegram adapter using **long polling** (`getUpdates`) and delivering responses via `sendMessage`. Concurrency is **serialized per session key**; different sessions may run concurrently with a configurable global cap.
 
-Architecture components: Gateway Core (session manager, run coordinator, model provider interface, internal event bus/router), CLI Adapter (WebSocket client with streaming display and reconnect/resubscribe), and Telegram Adapter (long polling via `getUpdates`, mapping `tg:<chat_id>` to session keys, dedupe via durable offset/update tracking, and outbound `sendMessage`). Concurrency model: one active run per session key; cross-session concurrency allowed with a configurable global cap.
+The **Gateway API** for CLI is a loopback **WebSocket** JSON protocol with `req/res/event` frames. Required v0.1 methods: `gateway.hello`, `session.open`, `session.send`, `session.subscribe`, `session.history`, and dev-only `gateway.shutdown`. Key events include `assistant.delta`, `assistant.final`, `run.started`, `run.completed`, and `error`. CLI requirements include streaming output, persistent default session, session switching, reconnect/resubscribe, and retrying sends with the same idempotency key.
 
-Persistence layout defaults to `~/.jj/gateway/` with `sessions.json` as a small index (metadata + channel bindings) and `transcripts/<session_id>.jsonl` as source-of-truth logs (header + typed entries: `message`, `assistant_delta` optional, `assistant_final`, `error`). Idempotency can be implemented with a dedicated `dedupe/` store or via scanning recent transcript lines.
-
-Gateway API for CLI: JSON frames over loopback WebSocket (`gateway.hello`, `session.open`, `session.send`, `session.subscribe`, `session.history`, dev-only `gateway.shutdown`), and events (`run.started`, `assistant.delta`, `assistant.final`, `run.completed`, `error`). Config lives at `~/.jj/gateway/config.toml` with sections for gateway, model provider, and Telegram; secrets must be env-var only. Deliverables include Rust workspace layout, tests (persistence, idempotency, WS happy path, Telegram dedupe with mocks), and docs (quickstart/protocol/storage).
+Telegram v0.1 ignores non-text messages, supports `/start`/`/help`, uses a default-deny allowlist, and stores durable poll offset/update dedupe state. Configuration is via `~/.jj/gateway/config.toml` (gateway, model, telegram sections), with secrets loaded from environment variables and never written to transcripts/logs. The plan defines milestones (M0–M4), minimum tests (restart safety, idempotency, telegram dedupe, concurrency), repository layout (Rust workspace crates), and required docs (quickstart/protocol/storage).

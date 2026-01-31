@@ -1,7 +1,7 @@
 ---
-id: src_01KGAH9QWXDTVYBKPNG42FDGDE
+id: src_01KGAKQYA2PRMPRV128VBJMAR2
 title: jj_gateway_v_0
-ingested_at: 2026-01-31T17:23:35.453548+00:00
+ingested_at: 2026-01-31T18:06:17.922964+00:00
 original_path: /Users/jesse/Downloads/jj_gateway_v_0.md
 tags: []
 processing_status: complete
