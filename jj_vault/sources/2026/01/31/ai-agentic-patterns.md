@@ -1,7 +1,7 @@
 ---
-id: src_01KGAHWXK99F9EMPAY5CMPCB43
+id: src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 title: ai-agentic-patterns
-ingested_at: 2026-01-31T17:34:03.881666+00:00
+ingested_at: 2026-01-31T18:07:01.264228+00:00
 original_path: /Users/jesse/cto/references/ai-agentic-patterns.md
 tags: []
 processing_status: complete

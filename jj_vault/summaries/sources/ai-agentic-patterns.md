@@ -1,41 +1,39 @@
 ---
-id: mem_01KGAHYTZ14YD53NAX02QEPBPK
-title: AI & Agentic Patterns — Reference Collection (source summary)
+id: mem_01KGAKV0FSYYG6T2BEND68437P
+title: AI & Agentic Patterns - Reference Collection
 type: source_summary
 status: active
 tags:
 - agents
 - context-management
-- feedback-loops
 - verification
+- feedback-loops
 - tooling
-- reading
-- creativity
-confidence: 0.86
-created_at: 2026-01-31T17:35:06.721729Z
-updated_at: 2026-01-31T17:35:06.721729Z
+- mcp
+confidence: 0.78
+created_at: 2026-01-31T18:07:58.457827Z
+updated_at: 2026-01-31T18:07:58.457827Z
 sources:
 - thread_id: ''
   event_ids:
-  - src_01KGAHWXK99F9EMPAY5CMPCB43
+  - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
 ---
 ## Summary
-This document is a curated reference collection of patterns for making AI agents effective in software and creative workflows, emphasizing **tight feedback loops**, **context management**, and **verification via automation**.
+This document is a curated reference collection of practitioner patterns for building and working with AI coding agents. A dominant theme is **closing feedback loops** so agents can self-correct without consuming expensive human review (“back pressure”). Banay argues that teams should stop spending human attention on trivial fixups (e.g., missing imports) by giving agents the ability to run builds/tests, read errors, and iterate until inconsistencies are eliminated. Strong type systems and high-quality compiler errors (e.g., Rust/Elm) function as “natural back pressure,” and UI automation (e.g., Playwright/DevTools screenshots) extends verification beyond code.
 
-A central theme is **“back pressure”**: agents perform better when the environment continuously surfaces correctness signals (build/type errors, tests, lint, UI assertions) so the agent can self-correct without consuming human review time. Banay’s *Don’t Waste Your Back Pressure* argues that you should stop spending human attention on trivial mistakes and instead give agents the ability to run builds/tests, interpret errors, and iterate until inconsistencies are eliminated; typed languages and high-quality error messages (e.g., Rust/Elm) act as natural back pressure. The collection also points to iterative “loop” styles (e.g., RALPH loops) and UI verification via browser/screenshot automation.
+A complementary practitioner workflow is described by **Peter Steinberger** (“Shipping at Inference-Speed”): with advanced coding models (GPT‑5.2/Codex), the bottleneck shifts from writing code to inference latency and hard thinking. His workflow emphasizes parallelism (3–8 projects at once), heavy use of queued tasks, minimal manual code reading, and maintaining per-project docs folders to stabilize context. He recommends starting projects as a **CLI-first** surface so agents can invoke it, verify output, and automate skills.
 
-Practitioner workflow guidance (Peter Steinberger’s *Shipping at Inference-Speed*) claims that with modern coding models (GPT‑5.2/Codex), the bottleneck is inference time and “hard thinking,” not coding. Patterns include running multiple projects in parallel, heavily using queues, asking the model to revise rather than reverting, planning collaboratively then issuing a “build” command, and relying less on reading code line-by-line. Context practices include maintaining per-project docs folders and reusing patterns across repos by referencing other directories.
+**Factory.ai’s Agent Readiness** frames uneven agent performance as primarily a codebase problem: repos need fast local feedback (pre-commit hooks), clear environment/build docs, solid tests, CI/CD, security scanning, explicit ownership, and branch protections. It offers maturity levels and reporting via CLI/dashboard/API, with actionable targets like “% agent-ready repos.”
 
-Factory.ai’s *Agent Readiness* frames inconsistent agent results as primarily a **codebase readiness** issue. It provides eight pillars (pre-commit hooks, environment/build docs, tests, CI/CD, security scanning, CODEOWNERS, branch protection) and maturity levels, recommending actionable metrics like the percentage of repos that are “agent-ready.”
+On creativity, **Lluminate** (Joel Simon) addresses LLM homogenization using evolutionary search plus explicit creative strategies (e.g., Oblique Strategies, SCAMPER), selecting for novelty via embedding distance; findings include mutation/crossover outperforming de novo generation.
 
-The collection broadens beyond coding: Joel Simon’s *Lluminate* uses evolutionary search and explicit creativity strategies to counter LLM homogeneity and promote novelty, and fast.ai’s close-reading workflow describes using LLMs to read deeply by summarizing chapters, avoiding spoilers, and generating end-of-chapter context for continuation.
+For reading/context use, fast.ai authors propose **LLM-assisted close reading**: convert text to Markdown, create chapter summaries for context, avoid spoilers, and generate end-of-chapter overviews (optionally Anki).
 
-Finally, Cloudflare’s *Code Mode* proposes an architecture where the LLM writes TypeScript that calls MCP tools (rather than calling tools directly), executed in a V8 isolate sandbox with no internet and protected secrets.
+Finally, Cloudflare’s **Code Mode** suggests an architecture where the model writes TypeScript that calls MCP tools (executed in a V8 isolate) rather than making direct tool calls, leveraging abundant TypeScript priors and enabling multi-step chaining without repeatedly re-tokenizing outputs.
 
-## Cross-cutting takeaways (as stated)
-- Context management is foundational (summaries-of-summaries, docs folders, JIT loading).
-- Automated feedback beats human review for correctness.
-- Run many experiments instead of seeking one perfect attempt.
-- Start with CLI interfaces so agents can close the loop.
-- As models improve, reduce scaffolding and rebuild SDLC assumptions around new constraints.
+## Notable cross-cutting themes
+- Context management as a first-class artifact (docs, summaries-of-summaries, cross-project references).
+- Automated feedback loops over human review time.
+- CLI-first interfaces for verifiable agent workflows.
+- Probabilistic iteration: many experiments over one “golden attempt.”
