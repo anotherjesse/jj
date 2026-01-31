@@ -7,13 +7,19 @@ tags:
 - dev-tools
 - internal-tooling
 - prior-work
-confidence: 0.8
+- architecture
+- modularity
+- unix-philosophy
+confidence: 0.7
 created_at: 2026-01-31T18:03:27.398664Z
-updated_at: 2026-01-31T18:03:27.398664Z
+updated_at: 2026-01-31T18:22:18.415212Z
 sources:
 - thread_id: ''
   event_ids:
   - src_01KGAKHQV1JD69416ZPE0RZ06Q
+- thread_id: ''
+  event_ids:
+  - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
 ---
 ## Summary
@@ -24,3 +30,11 @@ Vibewire was a developer-tools concept explored prior to LoopWorkâ€™s current â€
 
 ## Status
 - Not the current product direction (pivoted away).
+
+
+## Modularity direction (2026-01-24)
+- JJ describes moving away from monolithic systems (Vibewire) toward **independent modular pieces** with LEGO-like composability (UNIX-style small tools).
+- Examples of separated components:
+  - Proto Kanban task manager
+  - Sparks (container/forking)
+  - Separate coding agents

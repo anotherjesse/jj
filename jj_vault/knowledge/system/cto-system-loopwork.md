@@ -9,9 +9,10 @@ tags:
 - claude-code
 - cto
 - prompts
-confidence: 0.78
+- weekly-review
+confidence: 0.76
 created_at: 2026-01-31T18:09:27.357944Z
-updated_at: 2026-01-31T18:13:14.268754Z
+updated_at: 2026-01-31T18:14:31.467037Z
 sources:
 - thread_id: ''
   event_ids:
@@ -19,6 +20,9 @@ sources:
 - thread_id: ''
   event_ids:
   - src_01KGAM3XVP0HWCMX3EZEKBCEYN
+- thread_id: ''
+  event_ids:
+  - src_01KGAM69X9EWDQ54A2SB15GTCY
 supersedes: []
 ---
 ## Statement
@@ -57,3 +61,21 @@ A daily session-starter prompt exists to run each morning. It instructs the assi
 ### After-session updates
 - Update `logs/YYYY-MM-DD.md` with key decisions
 - Update `priorities.md` if priorities shift
+## Weekly CTO review prompt
+A **weekly** session-starter prompt exists to run **Friday (end of week)** or **Monday (start of week)**.
+
+### Inputs to read
+- `context/` (system context files)
+- `priorities.md`
+- weekly `logs/`
+
+### Sections
+- Retrospective (ship/accomplish, missed items, learnings, stop/start/continue)
+- Planning (top 3 next-week priorities, roadmap check, tech debt, decisions)
+- Team & Communication (sync with Carl; stakeholder updates)
+- Self-Care (sustainability; one improvement for effectiveness)
+
+### After-session updates
+- Update `context/roadmap.md`
+- Update `priorities.md`
+- Archive important decisions to `decisions/`

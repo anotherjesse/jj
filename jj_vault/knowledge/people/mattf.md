@@ -7,13 +7,19 @@ tags:
 - inspiration
 - cad
 - agentic-media
-confidence: 0.55
+- founder
+- prologue-cad
+- feather
+confidence: 0.8
 created_at: 2026-01-31T18:06:31.713369Z
-updated_at: 2026-01-31T18:06:31.713369Z
+updated_at: 2026-01-31T18:21:40.600378Z
 sources:
 - thread_id: ''
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
+- thread_id: ''
+  event_ids:
+  - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
 ---
 ## Summary
@@ -24,3 +30,12 @@ MattF is referenced as an inspiration source for agentic media tooling via "Prol
 
 ## Source pointer
 - Referenced note: `meetings/2026-01-24-mattf-prologue-cad.md` (not included in this ingestion).
+
+
+## Background
+- Friend of JJ from **Planet**.
+- JJ is invested in MattF’s startup **Feather**.
+- Website: https://mattferraro.dev/
+
+## Work discussed (2026-01-24)
+- Building **Prologue CAD**, an AI-powered CAD exploration tool emphasizing rapid forking of design ideas and fast human evaluation.
