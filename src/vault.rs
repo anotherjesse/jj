@@ -19,6 +19,8 @@ pub fn init_vault(path: &Path) -> Result<()> {
         path.join("index"),
         path.join("inbox/proposals"),
         path.join("inbox/questions"),
+        path.join("sources"),
+        path.join("summaries/sources"),
         path.join("artifacts"),
         path.join("audit"),
     ];

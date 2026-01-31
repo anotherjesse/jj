@@ -1,7 +1,9 @@
+mod agent;
 mod audit;
 mod embedding_index;
 mod embeddings;
 mod git_utils;
+mod ingest;
 mod knowledge;
 mod openai;
 mod repl;
@@ -16,6 +18,7 @@ use std::path::PathBuf;
 
 use crate::audit::append_ledger;
 use crate::git_utils::git_commit;
+use crate::ingest::{run_ingest, IngestOptions};
 use crate::knowledge::{apply_patch, KnowledgePatch};
 use crate::repl::{run_repl, ReplOptions};
 use crate::thread_store::{append_event, build_event, create_thread, read_thread, EventType, Role};
@@ -58,6 +61,23 @@ enum Commands {
         allow_commit: bool,
         #[arg(long, default_value_t = 50)]
         history: usize,
+    },
+    Ingest {
+        /// Path to the markdown file to ingest
+        file: PathBuf,
+        #[arg(long)]
+        vault: Option<PathBuf>,
+        /// Provenance string (e.g., "chatgpt-export", "notion", "manual")
+        #[arg(long)]
+        source: Option<String>,
+        /// Comma-separated tags
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+        /// Override document title (default: derived from filename)
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        model: Option<String>,
     },
 }
 
@@ -246,6 +266,27 @@ fn main() -> Result<()> {
                 allow_commit,
                 history,
             })?;
+        }
+        Commands::Ingest {
+            file,
+            vault,
+            source,
+            tags,
+            title,
+            model,
+        } => {
+            let result = run_ingest(IngestOptions {
+                vault,
+                file,
+                source,
+                tags,
+                title,
+                model,
+            })?;
+            println!("\nIngested: {}", result.source_path.display());
+            println!("Summary:  {}", result.summary_path.display());
+            println!("Thread:   {}", result.thread_path.display());
+            println!("Proposals: {}", result.proposal_count);
         }
     }
     Ok(())
