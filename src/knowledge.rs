@@ -31,6 +31,8 @@ pub struct FrontMatter {
     pub updated_at: DateTime<Utc>,
     pub sources: Vec<SourceRef>,
     pub supersedes: Vec<String>,
+    #[serde(default)]
+    pub summary: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,6 +59,8 @@ pub struct KnowledgePatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supersedes_add: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub extra: Option<JsonValue>,
 }
 
@@ -77,6 +81,7 @@ pub fn apply_patch(
     author: &str,
     reason: &str,
     proposal_id: Option<String>,
+    change_summary: &str,
 ) -> Result<ApplyResult> {
     let patch_for_ledger = patch.clone();
     let doc_path = vault_path.join(&patch.doc_path);
@@ -113,6 +118,7 @@ pub fn apply_patch(
             updated_at: now,
             sources: Vec::new(),
             supersedes: Vec::new(),
+            summary: patch.summary.clone().unwrap_or_default(),
         }
     };
 
@@ -150,6 +156,10 @@ pub fn apply_patch(
         }
     }
 
+    if let Some(summary) = patch.summary {
+        front_matter.summary = summary;
+    }
+
     if let Some(append) = patch.body_append {
         if !body.ends_with('\n') && !body.is_empty() {
             body.push('\n');
@@ -182,6 +192,7 @@ pub fn apply_patch(
         &new_content,
         &front_matter.id,
         &patch.doc_path,
+        change_summary,
     );
 
     Ok(ApplyResult { doc_path, ledger_entry })
@@ -211,6 +222,10 @@ fn parse_markdown(content: &str) -> Result<(FrontMatter, String)> {
     let body = lines.collect::<Vec<_>>().join("\n");
     let front_matter: FrontMatter = serde_yaml::from_str(&yaml)?;
     Ok((front_matter, body))
+}
+
+pub fn render_markdown_pub(front_matter: &FrontMatter, body: &str) -> Result<String> {
+    render_markdown(front_matter, body)
 }
 
 fn render_markdown(front_matter: &FrontMatter, body: &str) -> Result<String> {

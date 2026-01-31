@@ -13,6 +13,7 @@ mod vault;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::Value;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -21,7 +22,7 @@ use crate::git_utils::git_commit;
 use crate::ingest::{run_ingest, IngestOptions};
 use crate::knowledge::{apply_patch, KnowledgePatch};
 use crate::chat::{run_chat, ChatOptions};
-use crate::thread_store::{append_event, build_event, create_thread, read_thread, EventType, Role};
+use crate::thread_store::{append_event, build_event, create_thread, list_threads, read_thread, EventType, Role};
 use crate::vault::{init_vault, resolve_vault};
 
 #[derive(Parser)]
@@ -63,6 +64,9 @@ enum Commands {
         /// Resume an existing thread
         #[arg(long)]
         thread: Option<PathBuf>,
+        /// Resume the most recent thread
+        #[arg(long, default_value_t = false)]
+        last: bool,
         /// Override the LLM model
         #[arg(long)]
         model: Option<String>,
@@ -72,6 +76,18 @@ enum Commands {
         /// Number of thread history events to load
         #[arg(long, default_value_t = 50)]
         history: usize,
+    },
+    /// Backfill one-line summaries for knowledge docs missing them
+    BackfillSummaries {
+        /// Vault path (default: jj_vault)
+        #[arg(long)]
+        vault: Option<PathBuf>,
+        /// Override the LLM model
+        #[arg(long)]
+        model: Option<String>,
+        /// Dry run: show what would be updated without writing
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
     },
     /// Ingest a markdown document into the vault as a source
     Ingest {
@@ -148,6 +164,18 @@ enum ThreadCommand {
         #[arg(long)]
         reason: Option<String>,
     },
+    /// List recent threads with previews
+    List {
+        /// Vault path (default: jj_vault)
+        #[arg(long)]
+        vault: Option<PathBuf>,
+        /// Maximum number of threads to show
+        #[arg(long)]
+        limit: Option<usize>,
+        /// Filter by thread kind (default: chat). Use "all" to show everything.
+        #[arg(long, default_value = "chat")]
+        kind: String,
+    },
     /// Read events from a thread
     Read {
         /// Path to the thread JSONL file
@@ -204,7 +232,7 @@ fn main() -> Result<()> {
                     Some(value) => Some(chrono::NaiveDate::parse_from_str(&value, "%Y-%m-%d")?),
                     None => None,
                 };
-                let path = create_thread(&vault, thread_id, date)?;
+                let path = create_thread(&vault, thread_id, date, None)?;
                 println!("{}", path.display());
             }
             ThreadCommand::Append {
@@ -244,6 +272,28 @@ fn main() -> Result<()> {
                 );
                 append_event(&thread, event)?;
             }
+            ThreadCommand::List { vault, limit, kind } => {
+                let vault = resolve_vault(vault);
+                let kind_filter = if kind == "all" { None } else { Some(kind.as_str()) };
+                let summaries = list_threads(&vault, limit, kind_filter)?;
+                if summaries.is_empty() {
+                    println!("No threads found.");
+                } else {
+                    let show_kind = kind == "all";
+                    for s in &summaries {
+                        let first = truncate_preview(s.first_user_line.as_deref().unwrap_or("(empty)"), 60);
+                        let last = truncate_preview(s.last_line.as_deref().unwrap_or("(empty)"), 60);
+                        let time: chrono::DateTime<chrono::Utc> = s.modified.into();
+                        let label = if show_kind {
+                            let agent = s.agent.as_deref().unwrap_or(&s.kind);
+                            format!("  [{}]", agent)
+                        } else {
+                            String::new()
+                        };
+                        println!("{}  {}{label}  {:?}  →  {:?}", s.thread_id, time.format("%Y-%m-%d %H:%M"), first, last);
+                    }
+                }
+            }
             ThreadCommand::Read { thread, offset, limit } => {
                 let lines = read_thread(&thread, offset, limit)?;
                 for line in lines {
@@ -265,7 +315,7 @@ fn main() -> Result<()> {
                     .with_context(|| format!("read patch {}", patch.display()))?;
                 let patch: KnowledgePatch = serde_json::from_str(&patch_content)
                     .with_context(|| "parse patch json")?;
-                let result = apply_patch(&vault, patch, &author, &reason, proposal_id.clone())?;
+                let result = apply_patch(&vault, patch, &author, &reason, proposal_id.clone(), &reason)?;
                 let ledger_path = vault.join("audit/ledger.jsonl");
                 append_ledger(&ledger_path, &result.ledger_entry)?;
                 if commit {
@@ -293,10 +343,20 @@ fn main() -> Result<()> {
         Commands::Chat {
             vault,
             thread,
+            last,
             model,
             allow_commit,
             history,
         } => {
+            let thread = if last {
+                let v = resolve_vault(vault.clone());
+                let summaries = list_threads(&v, Some(1), Some("chat"))?;
+                let s = summaries.into_iter().next()
+                    .ok_or_else(|| anyhow::anyhow!("no threads found in vault"))?;
+                Some(s.path)
+            } else {
+                thread
+            };
             run_chat(ChatOptions {
                 vault,
                 thread,
@@ -304,6 +364,71 @@ fn main() -> Result<()> {
                 allow_commit,
                 history,
             })?;
+        }
+        Commands::BackfillSummaries { vault, model, dry_run } => {
+            use crate::knowledge::read_doc;
+            use crate::openai::OpenAIClient;
+
+            dotenvy::dotenv().ok();
+            let vault = resolve_vault(vault);
+            let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
+            let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
+            let model = model
+                .or_else(|| env::var("OPENAI_MODEL").ok())
+                .unwrap_or_else(|| "gpt-5.2-2025-12-11".to_string());
+            let client = OpenAIClient::new(api_key, base_url, model);
+
+            let root = vault.join("knowledge");
+            let mut stack = vec![root.clone()];
+            let mut docs_to_update: Vec<PathBuf> = Vec::new();
+            while let Some(dir) = stack.pop() {
+                if !dir.exists() { continue; }
+                for entry in fs::read_dir(&dir)? {
+                    let entry = entry?;
+                    let path = entry.path();
+                    if path.is_dir() {
+                        stack.push(path);
+                    } else if path.extension().and_then(|s| s.to_str()) == Some("md") {
+                        if let Ok(doc) = read_doc(&path) {
+                            if doc.front_matter.summary.is_empty() {
+                                docs_to_update.push(path);
+                            }
+                        }
+                    }
+                }
+            }
+
+            println!("Found {} docs without summaries.", docs_to_update.len());
+
+            for path in &docs_to_update {
+                let doc = read_doc(path)?;
+                let body_excerpt: String = doc.body.chars().take(500).collect();
+                let prompt = format!(
+                    "Write a single-line summary (max 150 chars) describing this entire document. Be specific and concrete. Return ONLY the summary line, nothing else.\n\nTitle: {}\nType: {}\nContent:\n{}",
+                    doc.front_matter.title, doc.front_matter.doc_type, body_excerpt
+                );
+                let messages = vec![
+                    serde_json::json!({"role": "user", "content": prompt}),
+                ];
+                let response = client.chat(&messages, &[])?;
+                let summary = response.content.unwrap_or_default().trim().to_string();
+
+                let rel = path.strip_prefix(&vault).unwrap_or(path).to_string_lossy();
+                if dry_run {
+                    println!("[dry-run] {} → {}", rel, summary);
+                } else {
+                    // Update frontmatter and write back
+                    let mut new_fm = doc.front_matter.clone();
+                    new_fm.summary = summary.clone();
+                    let rendered = crate::knowledge::render_markdown_pub(&new_fm, &doc.body)?;
+                    fs::write(path, rendered.as_bytes())?;
+                    println!("{} → {}", rel, summary);
+                }
+            }
+
+            if !dry_run && !docs_to_update.is_empty() {
+                println!("\nDone. Review changes and commit when ready.");
+            }
         }
         Commands::Ingest {
             file,
@@ -332,6 +457,15 @@ fn main() -> Result<()> {
 
 fn parse_json(value: &str, label: &str) -> Result<Value> {
     serde_json::from_str(value).with_context(|| format!("parse {label} JSON"))
+}
+
+fn truncate_preview(s: &str, max: usize) -> String {
+    let s = s.replace('\n', " ");
+    if s.len() <= max {
+        s
+    } else {
+        format!("{}…", &s[..max])
+    }
 }
 
 // ledger + git helpers live in modules

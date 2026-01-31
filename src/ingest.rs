@@ -13,7 +13,7 @@ use crate::embedding_index::build_knowledge_index;
 use crate::embeddings::EmbeddingClient;
 use crate::git_utils::git_commit;
 use crate::openai::OpenAIClient;
-use crate::thread_store::create_thread;
+use crate::thread_store::{create_thread, ThreadMeta};
 use crate::vault::resolve_vault;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,7 +106,11 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
     println!("Copied source to {}", source_path.display());
 
     // Create ingestion thread
-    let thread_path = create_thread(&vault, None, None)?;
+    let thread_path = create_thread(&vault, None, None, Some(ThreadMeta {
+        kind: "ingest".into(),
+        agent: Some("ingest".into()),
+        model: None,
+    }))?;
 
     // Load ingestion system prompt
     let system_prompt = load_ingest_prompt(&vault, &slug, &source_id)?;

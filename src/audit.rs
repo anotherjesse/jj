@@ -23,6 +23,8 @@ pub struct LedgerEntry {
     pub prev_hash: Option<String>,
     pub new_hash: String,
     pub patch: KnowledgePatch,
+    #[serde(default)]
+    pub change_summary: String,
 }
 
 impl LedgerEntry {
@@ -36,6 +38,7 @@ impl LedgerEntry {
         new_content: &str,
         doc_id: &str,
         doc_path: &str,
+        change_summary: &str,
     ) -> Self {
         let prev_hash = prior_content.map(hash_str);
         let new_hash = hash_str(new_content);
@@ -51,6 +54,7 @@ impl LedgerEntry {
             prev_hash,
             new_hash,
             patch: patch.clone(),
+            change_summary: change_summary.to_string(),
         }
     }
 }

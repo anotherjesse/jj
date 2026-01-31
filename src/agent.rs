@@ -250,12 +250,14 @@ pub fn tool_schemas() -> Vec<Value> {
                                 "tags_remove": { "type": "array", "items": { "type": "string" }, "description": "Tags to remove" },
                                 "body_append": { "type": "string", "description": "Markdown content to write as the document body. THIS IS HOW YOU WRITE CONTENT. Without it the doc will be empty." },
                                 "sources_add": { "type": "array", "items": { "type": "object", "properties": { "thread_id": { "type": "string" }, "event_ids": { "type": "array", "items": { "type": "string" } } } }, "description": "Source references (optional)" },
-                                "supersedes_add": { "type": "array", "items": { "type": "string" }, "description": "IDs of docs this supersedes" }
+                                "supersedes_add": { "type": "array", "items": { "type": "string" }, "description": "IDs of docs this supersedes" },
+                                "summary": { "type": "string", "description": "One-line description of the entire document (not the change). Max 150 chars. Required for new docs, updates the existing summary on existing docs." }
                             },
                             "required": ["doc_path"]
                         },
                         "author": { "type": "string" },
                         "reason": { "type": "string" },
+                        "change_summary": { "type": "string", "description": "One-line description of what this specific mutation does. Max 150 chars. Example: 'Created project doc for JJ Gateway with tech stack and architecture'" },
                         "proposal_id": { "type": "string" },
                         "commit": { "type": "boolean" }
                     },
@@ -345,7 +347,7 @@ fn execute_tool(
                 .and_then(|val| val.as_str())
                 .map(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d"))
                 .transpose()?;
-            let path = create_thread(&vault_path, thread_id, date)?;
+            let path = create_thread(&vault_path, thread_id, date, None)?;
             Ok(json!({ "thread_path": path }))
         }
         "thread_read" => {
@@ -412,7 +414,11 @@ fn execute_tool(
                 return Err(anyhow!("commit requested but allow_commit is false"));
             }
 
-            let result = apply_patch(vault, patch, author, reason, proposal_id.clone())?;
+            let change_summary = args
+                .get("change_summary")
+                .and_then(|val| val.as_str())
+                .unwrap_or("");
+            let result = apply_patch(vault, patch, author, reason, proposal_id.clone(), change_summary)?;
             let ledger_path = vault.join("audit/ledger.jsonl");
             append_ledger(&ledger_path, &result.ledger_entry)?;
 
