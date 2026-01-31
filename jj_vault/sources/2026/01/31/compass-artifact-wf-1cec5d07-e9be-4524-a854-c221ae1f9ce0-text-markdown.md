@@ -1,7 +1,7 @@
 ---
-id: src_01KGAGSGAKF04F3R4GT3ENT6QB
+id: src_01KGAHKH7MWX9B27SKEBRWXNJR
 title: compass_artifact_wf-1cec5d07-e9be-4524-a854-c221ae1f9ce0_text_markdown
-ingested_at: 2026-01-31T17:14:43.411055+00:00
+ingested_at: 2026-01-31T17:28:56.308643+00:00
 original_path: /Users/jesse/Downloads/compass_artifact_wf-1cec5d07-e9be-4524-a854-c221ae1f9ce0_text_markdown.md
 tags: []
 processing_status: complete
