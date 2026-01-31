@@ -36,7 +36,12 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/ws", any(ws_handler))
         .route("/health", get(health))
+        .route("/", get(index_html))
         .with_state(state)
+}
+
+async fn index_html() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("../../web/index.html"))
 }
 
 async fn health() -> &'static str {

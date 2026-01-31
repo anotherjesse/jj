@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JJ Gateway</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #0d1117; color: #c9d1d9; height: 100vh; display: flex; }
+#sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; display: flex; flex-direction: column; }
+#sidebar-header { padding: 16px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+#sidebar-header h2 { font-size: 14px; color: #58a6ff; }
+#new-session { background: #238636; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+#new-session:hover { background: #2ea043; }
+#session-list { flex: 1; overflow-y: auto; }
+.session-item { padding: 10px 16px; border-bottom: 1px solid #21262d; cursor: pointer; }
+.session-item:hover { background: #1c2128; }
+.session-item.active { background: #1f6feb22; border-left: 2px solid #58a6ff; }
+.session-key { font-size: 13px; font-weight: 600; color: #f0f6fc; }
+.session-meta { font-size: 11px; color: #8b949e; margin-top: 2px; }
+#main { flex: 1; display: flex; flex-direction: column; }
+#chat-header { padding: 12px 16px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; }
+#messages { flex: 1; overflow-y: auto; padding: 16px; }
+.message { margin-bottom: 12px; max-width: 80%; }
+.message.user { margin-left: auto; }
+.message.assistant { margin-right: auto; }
+.message .bubble { padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+.message.user .bubble { background: #1f6feb; color: #fff; }
+.message.assistant .bubble { background: #21262d; color: #c9d1d9; }
+.message.system .bubble { background: #1c1c1c; color: #8b949e; font-size: 12px; font-style: italic; }
+.message.tool .bubble { background: #1a1e24; color: #7ee787; font-size: 12px; border: 1px solid #30363d; }
+#input-area { padding: 12px 16px; border-top: 1px solid #30363d; display: flex; gap: 8px; }
+#input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #c9d1d9; font-size: 14px; font-family: inherit; outline: none; }
+#input:focus { border-color: #58a6ff; }
+#send { background: #238636; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+#send:hover { background: #2ea043; }
+#send:disabled { opacity: 0.5; cursor: not-allowed; }
+#status { padding: 4px 16px; font-size: 11px; color: #8b949e; border-top: 1px solid #21262d; }
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+.status-dot.connected { background: #3fb950; }
+.status-dot.disconnected { background: #f85149; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>JJ Sessions</h2>
+    <button id="new-session">+ New</button>
+  </div>
+  <div id="session-list"></div>
+</div>
+
+<div id="main">
+  <div id="chat-header">Select or create a session</div>
+  <div id="messages"></div>
+  <div id="input-area">
+    <input id="input" type="text" placeholder="Type a message..." disabled>
+    <button id="send" disabled>Send</button>
+  </div>
+  <div id="status"><span class="status-dot disconnected"></span>Connecting...</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+let ws = null;
+let currentSession = null;
+let pendingRequests = {};
+let reqCounter = 0;
+
+function genId() { return 'r' + (++reqCounter); }
+
+function setStatus(connected, text) {
+  const dot = $('#status .status-dot');
+  dot.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+  $('#status').innerHTML = '';
+  $('#status').appendChild(dot);
+  $('#status').append(text);
+}
+
+function connect() {
+  const port = location.port || '9123';
+  const token = new URLSearchParams(location.search).get('token') || '';
+  if (!token) {
+    setStatus(false, 'No token. Add ?token=<bearer> to URL.');
+    return;
+  }
+
+  ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ token }));
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    // Auth response
+    if (msg.type === 'res' && msg.id === '0') {
+      if (msg.ok) {
+        setStatus(true, 'Connected');
+        loadSessions();
+      } else {
+        setStatus(false, 'Auth failed: ' + (msg.error?.message || '?'));
+      }
+      return;
+    }
+
+    // Response to a pending request
+    if (msg.type === 'res' && pendingRequests[msg.id]) {
+      const { resolve, reject } = pendingRequests[msg.id];
+      delete pendingRequests[msg.id];
+      if (msg.ok) resolve(msg.payload);
+      else reject(new Error(msg.error?.message || 'request failed'));
+      return;
+    }
+
+    // Event
+    if (msg.type === 'event' || msg.event) {
+      handleEvent(msg);
+    }
+  };
+
+  ws.onclose = () => setStatus(false, 'Disconnected');
+  ws.onerror = () => setStatus(false, 'Connection error');
+}
+
+function send(method, params) {
+  return new Promise((resolve, reject) => {
+    const id = genId();
+    pendingRequests[id] = { resolve, reject };
+    ws.send(JSON.stringify({ type: 'req', id, method, params }));
+  });
+}
+
+function handleEvent(msg) {
+  const event = msg.event;
+  const payload = msg.payload || {};
+  const sessionId = msg.session_id;
+
+  if (sessionId !== currentSession) return;
+
+  switch (event) {
+    case 'user_message':
+      addMessage('user', payload.content);
+      break;
+    case 'delta':
+      appendDelta(payload.text || '');
+      break;
+    case 'final':
+      finalizeDelta(payload.content || '');
+      break;
+    case 'tool_activity':
+      addMessage('tool', `[${payload.tool_name || 'tool'}]`);
+      break;
+    case 'error':
+      addMessage('system', 'Error: ' + (payload.message || '?'));
+      break;
+  }
+}
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'message ' + role;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+  div.appendChild(bubble);
+  $('#messages').appendChild(div);
+  $('#messages').scrollTop = $('#messages').scrollHeight;
+}
+
+let deltaDiv = null;
+function appendDelta(text) {
+  if (!deltaDiv) {
+    deltaDiv = document.createElement('div');
+    deltaDiv.className = 'message assistant';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    deltaDiv.appendChild(bubble);
+    $('#messages').appendChild(deltaDiv);
+  }
+  deltaDiv.querySelector('.bubble').textContent += text;
+  $('#messages').scrollTop = $('#messages').scrollHeight;
+}
+
+function finalizeDelta(text) {
+  if (deltaDiv) {
+    deltaDiv.querySelector('.bubble').textContent = text;
+    deltaDiv = null;
+  } else {
+    addMessage('assistant', text);
+  }
+}
+
+async function loadSessions() {
+  const result = await send('session.list', {});
+  const list = result.sessions || [];
+  renderSessionList(list);
+}
+
+function renderSessionList(sessions) {
+  const el = $('#session-list');
+  el.innerHTML = '';
+  sessions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'session-item' + (s.session_key === currentSession ? ' active' : '');
+    div.innerHTML = `<div class="session-key">${esc(s.session_key)}</div><div class="session-meta">${esc(s.thread_id)}</div>`;
+    div.onclick = () => openSession(s.session_key);
+    el.appendChild(div);
+  });
+}
+
+async function openSession(key) {
+  currentSession = key;
+  await send('session.open', { session_key: key });
+
+  $('#chat-header').textContent = 'Session: ' + key;
+  $('#messages').innerHTML = '';
+  $('#input').disabled = false;
+  $('#send').disabled = false;
+  deltaDiv = null;
+
+  // Load history
+  const hist = await send('session.history', { session_key: key, limit: 100 });
+  (hist.events || []).forEach(line => {
+    try {
+      const ev = JSON.parse(line);
+      const content = typeof ev.content === 'string' ? ev.content : (ev.content ? JSON.stringify(ev.content) : '');
+      if (!content) return;
+      switch (ev.type) {
+        case 'user_message': addMessage('user', content); break;
+        case 'assistant_message': addMessage('assistant', content); break;
+        case 'tool_call': addMessage('tool', `[${ev.tool_name || 'tool'}] ${JSON.stringify(ev.tool_args || {})}`); break;
+        case 'system_note': addMessage('system', content); break;
+      }
+    } catch (_) {}
+  });
+
+  // Refresh sidebar
+  loadSessions();
+}
+
+async function sendMessage() {
+  const input = $('#input');
+  const text = input.value.trim();
+  if (!text || !currentSession) return;
+  input.value = '';
+  try {
+    await send('session.send', { session_key: currentSession, content: text });
+  } catch (e) {
+    addMessage('system', 'Send failed: ' + e.message);
+  }
+}
+
+$('#send').onclick = sendMessage;
+$('#input').onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); };
+$('#new-session').onclick = async () => {
+  const key = prompt('Session name:', 'session-' + Date.now());
+  if (key) openSession(key);
+};
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+connect();
+</script>
+</body>
+</html>
