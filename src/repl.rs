@@ -9,6 +9,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::audit::append_ledger;
+use crate::embedding_index::{build_knowledge_index, search_knowledge_index};
+use crate::embeddings::EmbeddingClient;
 use crate::git_utils::git_commit;
 use crate::knowledge::{apply_patch, read_doc, KnowledgePatch};
 use crate::openai::{ChatResponse, OpenAIClient};
@@ -406,10 +408,25 @@ fn tool_schemas() -> Vec<Value> {
                     "type": "object",
                     "properties": {
                         "query": { "type": "string" },
+                        "mode": { "type": "string", "description": "auto|vector|substring (default auto)" },
                         "limit": { "type": "integer" },
                         "reason": { "type": "string" }
                     },
                     "required": ["query", "reason"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "knowledge_index",
+                "description": "Build or rebuild the knowledge embedding index.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["reason"]
                 }
             }
         })
@@ -560,6 +577,33 @@ fn execute_tool(
                 .ok_or_else(|| anyhow!("query required"))?
                 .to_lowercase();
             let limit = args.get("limit").and_then(|val| val.as_u64()).unwrap_or(10) as usize;
+            let mode = args
+                .get("mode")
+                .and_then(|val| val.as_str())
+                .unwrap_or("auto");
+
+            if mode == "vector" || mode == "auto" {
+                if let Ok(client) = EmbeddingClient::from_env() {
+                    if let Ok(hits) = search_knowledge_index(vault, &client, &query, limit) {
+                        let items: Vec<Value> = hits
+                            .into_iter()
+                            .map(|hit| {
+                                json!({
+                                    "doc_path": hit.doc_path,
+                                    "chunk_id": hit.chunk_id,
+                                    "score": hit.score,
+                                    "excerpt": hit.excerpt
+                                })
+                            })
+                            .collect();
+                        return Ok(json!({ "mode": "vector", "count": items.len(), "matches": items }));
+                    }
+                }
+                if mode == "vector" {
+                    return Err(anyhow!("vector search unavailable (missing index or provider)"));
+                }
+            }
+
             let root = vault.join("knowledge");
             let mut matches = Vec::new();
             for path in walk_markdown(&root)? {
@@ -577,7 +621,18 @@ fn execute_tool(
                     }
                 }
             }
-            Ok(json!({ "count": matches.len(), "matches": matches }))
+            Ok(json!({ "mode": "substring", "count": matches.len(), "matches": matches }))
+        }
+        "knowledge_index" => {
+            let client = EmbeddingClient::from_env()?;
+            let stats = build_knowledge_index(vault, &client)?;
+            Ok(json!({
+                "doc_count": stats.doc_count,
+                "chunk_count": stats.chunk_count,
+                "index_path": stats.index_path,
+                "provider": stats.provider,
+                "model": stats.model
+            }))
         }
         _ => Err(anyhow!("unknown tool: {name}")),
     }

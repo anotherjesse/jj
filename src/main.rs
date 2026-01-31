@@ -1,4 +1,6 @@
 mod audit;
+mod embedding_index;
+mod embeddings;
 mod git_utils;
 mod knowledge;
 mod openai;
@@ -40,6 +42,10 @@ enum Commands {
     Knowledge {
         #[command(subcommand)]
         command: KnowledgeCommand,
+    },
+    Index {
+        #[arg(long)]
+        vault: Option<PathBuf>,
     },
     Repl {
         #[arg(long)]
@@ -214,6 +220,18 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Commands::Index { vault } => {
+            use crate::embedding_index::build_knowledge_index;
+            use crate::embeddings::EmbeddingClient;
+            let vault = resolve_vault(vault);
+            let client = EmbeddingClient::from_env()?;
+            let stats = build_knowledge_index(&vault, &client)?;
+            println!(
+                "Indexed {} docs / {} chunks ({} {})",
+                stats.doc_count, stats.chunk_count, stats.provider, stats.model
+            );
+            println!("Index: {}", stats.index_path.display());
+        }
         Commands::Repl {
             vault,
             thread,

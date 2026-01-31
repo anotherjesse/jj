@@ -23,6 +23,7 @@ Using `just` (if installed):
 - `just smoketest`
 - `just vault-init`
 - `just repl`
+- `just embed-index`
 
 ## Repo layout (current)
 - `plan.md`: build spec + phased plan

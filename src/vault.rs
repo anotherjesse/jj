@@ -16,6 +16,7 @@ pub fn init_vault(path: &Path) -> Result<()> {
         path.join("knowledge/projects"),
         path.join("knowledge/prefs"),
         path.join("knowledge/system"),
+        path.join("index"),
         path.join("inbox/proposals"),
         path.join("inbox/questions"),
         path.join("artifacts"),

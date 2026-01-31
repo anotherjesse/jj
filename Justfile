@@ -20,3 +20,6 @@ thread-create vault="jj_vault":
 
 repl vault="jj_vault":
 	cargo run -- repl --vault {{vault}}
+
+embed-index vault="jj_vault":
+	cargo run -- index --vault {{vault}}
