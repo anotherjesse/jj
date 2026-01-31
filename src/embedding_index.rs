@@ -194,7 +194,12 @@ fn cosine_similarity(query: &[f32], query_norm: f32, doc: &[f32]) -> f32 {
 fn excerpt_at(text: &str, max_len: usize) -> String {
     let mut snippet = text.trim().replace('\n', " ");
     if snippet.len() > max_len {
-        snippet.truncate(max_len);
+        // Find a valid char boundary at or before max_len
+        let mut end = max_len;
+        while end > 0 && !snippet.is_char_boundary(end) {
+            end -= 1;
+        }
+        snippet.truncate(end);
         snippet.push('…');
     }
     snippet

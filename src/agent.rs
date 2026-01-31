@@ -561,8 +561,13 @@ fn walk_markdown(root: &Path) -> Result<Vec<PathBuf>> {
 }
 
 fn excerpt_at(content: &str, idx: usize, radius: usize) -> String {
-    let start = idx.saturating_sub(radius);
-    let end = usize::min(content.len(), idx + radius);
-    let snippet = &content[start..end];
-    snippet.replace('\n', " ")
+    let mut start = idx.saturating_sub(radius);
+    let mut end = usize::min(content.len(), idx + radius);
+    while start < content.len() && !content.is_char_boundary(start) {
+        start += 1;
+    }
+    while end > start && !content.is_char_boundary(end) {
+        end -= 1;
+    }
+    content[start..end].replace('\n', " ")
 }
