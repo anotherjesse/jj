@@ -17,6 +17,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: JJ Gateway v0.1 should be crash-only and replayable via append-only per-session JSONL event logs, plus idempotency keys for retries/dedupe.
 ---
 ## Statement
 For JJ Gateway v0.1, the intended operating model is **crash-only** and **replayable**:

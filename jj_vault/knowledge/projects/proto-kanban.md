@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: 'Rust proto Kanban: 5-column board where moving tasks to “ready” auto-starts Claude coding in a new Sparks fork via RPC triggers.'
 ---
 ## Summary
 A lightweight **kanban management** tool (described as a Rust app) used to drive agentic coding workflows.

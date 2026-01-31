@@ -13,6 +13,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Eric Ries (fast.ai) is cited as co-author of the Jan 2026 fast.ai post “How To Use AI for the Ancient Art of Close Reading.”
 ---
 ## Summary
 Eric Ries (fast.ai) is cited as a co-author of “How To Use AI for the Ancient Art of Close Reading” (Jan 2026).

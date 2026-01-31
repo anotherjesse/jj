@@ -17,6 +17,7 @@ sources:
   event_ids:
   - src_01KGAMWX22FT1G07J7NENHHPP9
 supersedes: []
+summary: Proposed service that scans a git repo to AI-summarize diffs+messages into Markdown changelogs by commit/day/week/release/month.
 ---
 ## Summary
 A proposed tool/service that points at a git repository and produces **AI-generated changelog summaries** rolled up at different granularities (commit/day/week/release/month) and emitted as Markdown.

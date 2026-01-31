@@ -19,6 +19,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: LoopWork is a pre-product team with ~$2M runway exploring “Cursor/Claude Code for media,” starting with AI-assisted image tools in Q1 2025.
 ---
 ## Snapshot
 - Stage: pre-product; exploring product–market fit.

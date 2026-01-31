@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAM1GY4Z99KMV2ZZSJZK5HD
 supersedes: []
+summary: 'Workflow + ADR template for major architecture decisions: read context/, gather decision/context/options, then analyze trade-offs & stage priorities'
 ---
 ## Purpose
 A standardized workflow for making **significant technical/architecture decisions** with the assistant.

@@ -24,6 +24,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: Sparks run in isolated containers with btrfs snapshot roots, auto-mount /spark/bin/all/proj, support spark data volumes and spark secrets, incl ephemeral sparks
 ---
 ## Sparks architecture/system facts
 - Each “spark” runs in an **isolated container** with its own root filesystem.

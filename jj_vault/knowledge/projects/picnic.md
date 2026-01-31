@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Picnic is a Spark-native LoopWork app in development following Spark/Sparks best practices, requiring standalone external capabilities vs internal-only coupling.
 ---
 ## Summary
 Picnic is a LoopWork application under development intended to follow the latest Spark/Sparks best practices. A key architectural requirement is that Picnic must have **standalone external capabilities** (not tightly coupled to internal-only systems), even if internal tools share underlying skills.

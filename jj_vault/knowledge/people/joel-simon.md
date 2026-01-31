@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Joel Simon authored Lluminate (Dec 2025), using evolutionary pressure and embedding-distance novelty metrics to counter LLM output homogenization.
 ---
 ## Summary
 Joel Simon is cited as the author of Lluminate (Dec 2025), a project exploring open-ended creative search with reasoning LLMs.

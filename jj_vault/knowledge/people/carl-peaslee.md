@@ -18,6 +18,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Carl Peaslee, CEO of LoopWork in San Francisco; GitHub @carlpeaslee; technical+GTM; blocked by tmux SSH sizing; building Picnic & Loop chat.
 ---
 ## Role
 - CEO at LoopWork

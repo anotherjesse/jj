@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: Nano Banana Pro is an image generation model for turning CAD depth map renders into photorealistic mockups in realistic industrial scenes.
 ---
 ## Summary
 **Nano Banana Pro** is referenced as a tool/model used for **high-quality image generation** in a workflow that turns CAD renders (e.g., depth maps) into realistic mockups (e.g., placing a part in an industrial setting).

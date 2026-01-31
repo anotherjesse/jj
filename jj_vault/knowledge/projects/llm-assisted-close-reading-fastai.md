@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: 'Jan 2026 fast.ai workflow: PDF→Markdown, chapter summaries as context, no-spoilers LLM close reading, Q&A while reading, end-of-chapter overview.'
 ---
 ## Summary
 A fast.ai workflow (Jan 2026) for using LLMs to support “close reading”: iteratively reading text while pausing to ask questions, make connections, and explore rabbit holes, while maintaining compact context across chapters.

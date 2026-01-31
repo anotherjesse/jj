@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKH3Q294ST9VDHFF0Q9Y8A
 supersedes: []
+summary: 'Preference emphasizing speed to market: choose tech stack/tooling/infra that minimize time-to-first-release and ops burden given team and funding constraints.'
 ---
 ## Statement
 Speed to market is critical.

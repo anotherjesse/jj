@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Prefer agent workflows with fast automated build/test/typecheck/UI feedback loops and verification, reducing human review and improving effectiveness.
 ---
 ## Statement
 Prefer engineering setups where agents can **run and verify** work end-to-end via fast, automated feedback loops (build/test/typecheck/UI checks), minimizing human review time.

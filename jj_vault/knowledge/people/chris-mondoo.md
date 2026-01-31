@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMQP2QCND16S0Q271PWVCJ
 supersedes: []
+summary: Mondoo CTO/VPE Chris drove rapid Claude Code adoption and seeks tooling for parallel agent runs and verification loops beyond manual multi-agent management.
 ---
 ## Role
 - CTO/VPE at **Mondoo** (per meeting notes)

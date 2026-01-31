@@ -24,6 +24,7 @@ sources:
   event_ids:
   - src_01KGAM69X9EWDQ54A2SB15GTCY
 supersedes: []
+summary: LoopWork’s local `cto/` knowledge base (README, priorities, etc.) gives Claude Code startup context on priorities, decisions/history, activity, and Jesse Q&A.
 ---
 ## Statement
 LoopWork maintains a local "CTO System" knowledge base (used by Claude Code) to provide session-start context about LoopWork, current priorities, technical decisions/history, and recent activity.

@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKZ7WZ4HP7N9VGQ6A2S732
 supersedes: []
+summary: 'Preference: debugging workflow—ask expected/actual, attempts, logs, read code; give hypotheses→investigation→fixes; offer rubber-duck Q&A.'
 ---
 ## Preference
 When JJ is debugging, use a structured workflow:

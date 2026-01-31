@@ -18,6 +18,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: 'JJ Gateway v0.1 uses event-sourced storage at ~/.jj/gateway/: per-session transcripts/<session_id>.jsonl (truth) + sessions.json index.'
 ---
 ## JJ Gateway v0.1 persistence model
 - Data root (default): `~/.jj/gateway/`

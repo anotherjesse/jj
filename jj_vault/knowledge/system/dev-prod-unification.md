@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: Unify dev/prod by 2025-01-23 into one deploy/setup/verify flow using flags (not separate scripts) to reduce divergence and match prod.
 ---
 ## Fact / requirement
 As of **2025-01-23**, **dev/prod unification** is a NEW, **blocking** priority: dev and prod currently use different scripts/flows/settings.

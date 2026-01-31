@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKKWB9TDHWX5V9423PZ1BG
 supersedes: []
+summary: 'ZOMG: experiment to chat-build experiences then freeze into apps/widgets; freezing caused “deadness” (static, stuck-in-time apps); prior work only.'
 ---
 ## Summary
 ZOMG is referenced as a prior experiment where a user could chat with an agent to build experiences and then “freeze” them into apps/widgets.

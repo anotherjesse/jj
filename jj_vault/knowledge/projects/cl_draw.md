@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: 'LoopWork cl_draw: CLI-first canvas manipulation + AI-assisted illustration backend, actively deployed and improving (2025-01-23).'
 ---
 ## Summary
 cl_draw is a LoopWork project focused on **canvas manipulation** and **AI-assisted illustration**, with an explicit **CLI-first** product pattern. It is also an active deployment target.

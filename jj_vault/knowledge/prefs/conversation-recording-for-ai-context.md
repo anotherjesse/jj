@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: Preference for automatic, comprehensive recording of Claude sessions, internal chats, and calls to build AI-accessible org history, with consent/privacy decisions.
 ---
 ## Statement
 LoopWork wants **comprehensive conversation capture** so future AI systems can browse organizational history when needed.

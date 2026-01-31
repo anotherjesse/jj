@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: 'LoopWork Q1 project to prototype a “Cursor for images”: agentic workflows for image creation/editing and coding-like iteration (Cursor/Claude Code), inspired by Prologue CAD.'
 ---
 ## Summary
 An exploration track at LoopWork to understand and prototype what a **"Cursor for images"** could bei.e., agentic workflows for image creation/editing.

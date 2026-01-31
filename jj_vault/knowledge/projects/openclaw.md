@@ -17,6 +17,7 @@ sources:
   event_ids:
   - src_01KGAKJXVY906XCK7PZ4K4TCT8
 supersedes: []
+summary: 'OpenClaw: Node.js/TS gateway daemon (ws://127.0.0.1:18789) control plane for local-first assistant—routing, scheduling, tools.'
 ---
 ## Overview
 

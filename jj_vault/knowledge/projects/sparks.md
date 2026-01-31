@@ -21,6 +21,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: Rust CLI “Sparks” creates instant isolated container sandboxes with persistent filesystems via btrfs snapshots; successor to Vibewire.
 ---
 ## Summary
 Sparks provides instant sandbox environments (“sparks”) in isolated containers with **persistent filesystems** backed by **btrfs snapshots**. It is a CLI tool intended to be fast and composable.

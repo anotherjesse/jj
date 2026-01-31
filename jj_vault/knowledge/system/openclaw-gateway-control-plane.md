@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKJXVY906XCK7PZ4K4TCT8
 supersedes: []
+summary: Defines OpenClaw's single-per-host Gateway daemon control plane exposing ws://127.0.0.1:18789 with req/res/event framing and auth connect handshake.
 ---
 ## Gateway control plane
 

@@ -18,6 +18,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: 'Spec v0.1 for localhost WebSocket JSON frames: req/res/event schemas plus required methods gateway.hello and session.open.'
 ---
 ## Transport
 - WebSocket server bound to loopback: `127.0.0.1:<port>`.

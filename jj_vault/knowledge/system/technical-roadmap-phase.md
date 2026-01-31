@@ -14,6 +14,7 @@ sources:
   event_ids:
   - src_01KGAKK3894WSZRDHMV3ZCF7AF
 supersedes: []
+summary: 'As of 2025-01-23 in Discovery & Definition; phases: Foundation, MVP, Launch, Iteration with scope/stack/env, core features+CI/CD, auth+prod+monitoring, feedback.'
 ---
 ## Fact
 As of **2025-01-23**, the technical roadmap is in **Discovery & Definition**.

@@ -19,6 +19,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: 'JJ Gateway v0.1 Telegram adapter: config-enabled long-polling getUpdates with durable offset, tg:<chat_id> sessions, update/message dedupe.'
 ---
 ## JJ Gateway v0.1 Telegram adapter
 - Enabled via config: `[telegram].enabled = true`.

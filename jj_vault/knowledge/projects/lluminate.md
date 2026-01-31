@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Lluminate (Joel Simon, Dec 2025) evolves reasoning-LLM outputs using creative-strategy injection, mutation/crossover, and embedding novelty scoring.
 ---
 ## Summary
 Lluminate is a project by Joel Simon (Dec 2025) that uses evolutionary search plus explicit creative strategies to drive open-ended creative exploration with reasoning LLMs, counteracting homogeneous “average” outputs.

@@ -21,6 +21,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: 'MattF, JJ’s Planet friend/investment, inspired agentic imagery tooling via Prologue CAD: rapid variant generation, human eval, genetic creativity.'
 ---
 ## Summary
 MattF is referenced as an inspiration source for agentic media tooling via "Prologue CAD".

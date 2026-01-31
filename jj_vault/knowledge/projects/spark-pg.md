@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
+summary: 'spark-pg: Sparks-adjacent service/CLI (working 2025-01-25) to manage Postgres via spark-client; cmds new/fork/connect/status.'
 ---
 ## Summary
 `spark-pg` is a Sparks-adjacent service/CLI for managing Postgres databases in the Sparks ecosystem.

@@ -17,6 +17,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: 'Prologue CAD: a 3-person AI CAD exploration tool (“Tinder for CAD”) for rapidly generating/swiping design variants; demo pillow block gen ~10 variations.'
 ---
 ## Summary
 **Prologue CAD** is an AI-powered CAD exploration tool optimized for generating and evaluating many design variations quickly. The product is described as “**Tinder for CAD**”: users rapidly swipe through candidate designs, keeping the exploration loop fast and fork-friendly.

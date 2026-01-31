@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKJXVY906XCK7PZ4K4TCT8
 supersedes: []
+summary: 'Spec for OpenClaw tools/skills: define tools with TypeBox object schemas (no unions, use Optional), and skills in SKILL.md YAML frontmatter.'
 ---
 ## Tools
 

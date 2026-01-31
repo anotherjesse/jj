@@ -18,6 +18,7 @@ sources:
   event_ids:
   - src_01KGAKHQV1JD69416ZPE0RZ06Q
 supersedes: []
+summary: 2-person team (1 technical) at pre-product PMF stage; bootstrapped/pre-funding notes but ~\$2M runway to guide scope/tooling.
 ---
 ## Constraints
 - Team: 2-person team; 1 technical contributor.

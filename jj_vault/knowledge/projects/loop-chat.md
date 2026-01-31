@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Loop chat is LoopWork’s Spark-native internal chat app to replace iMessage, separating internal Spark tools from external tooling (active 2025-01-23).
 ---
 ## Summary
 Loop chat is an internal chat application at LoopWork, intended to replace iMessage and described as the **first Spark-native app**.

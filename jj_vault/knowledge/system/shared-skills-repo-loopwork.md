@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Create loop.work/skills as a shared repo to consolidate skill definitions; start with manual sync, later add a CLI, using symlinked skills dir.
 ---
 ## Decision
 Create a shared repository at **`loop.work/skills`** to consolidate skill definitions that were previously scattered.

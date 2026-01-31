@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMZXKVG13ZFCF7ET71Z06P
 supersedes: []
+summary: 'Readwise Reader API v3: token auth header, base URL, 20 req/min limit, and list documents endpoint with filters (location, category, tag, updatedAfter).'
 ---
 ## Authentication
 - Token-based auth.

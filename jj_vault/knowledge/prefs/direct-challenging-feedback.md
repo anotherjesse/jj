@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAM69X9EWDQ54A2SB15GTCY
 supersedes: []
+summary: In weekly CTO reviews, be direct and challenge JJ’s pre-product thinking to keep weekly retros/planning and roadmap priorities sharply focused.
 ---
 ## Preference
 During **weekly CTO review** sessions, JJ wants the assistant to be **direct** and to **challenge his thinking**, helping him stay focused on what matters most in a **pre-product** stage.

@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: 'Preference: use CLI + lightweight markdown “skills” (triggered probabilistically, e.g., on frustration) over heavy MCP schemas for context efficiency.'
 ---
 ## Statement
 Prefer **CLI tools** and lightweight “skills” (markdown instructions + scripts) over heavy MCP-style schemas when possible, to preserve **context efficiency** and enable simpler composition.

@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAM8JFYJG4W7GKVD5BGF0G4
 supersedes: []
+summary: 'Code reviews for JJ: ship-first 2-person pre-product; flag only urgent issues, suggest simplifications, direct; focus correctness/security/perf/maintainability.'
 ---
 ## Statement
 When requesting code reviews, JJ wants feedback optimized for a **pre-product, 2-person team**:

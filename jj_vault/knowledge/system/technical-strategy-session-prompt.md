@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMCKAT6BVGB7B883DM1DRK
 supersedes: []
+summary: 'Reusable prompt for CTO-level strategy talks: read context files, define topic/context for 2-person pre-product team, explore infra vs features & build/buy/OSS.'
 ---
 ## Technical strategy session prompt
 A reusable prompt for conducting **bigger-picture technical strategy** discussions.

@@ -17,6 +17,7 @@ sources:
   event_ids:
   - src_01KGAMZXKVG13ZFCF7ET71Z06P
 supersedes: []
+summary: Project to sync Readwise Reader docs, progress, highlights & notes into Jesse’s AI context via periodic local Markdown export, optional on-demand tool.
 ---
 ## Goal
 Integrate **Readwise Reader** activity (documents, reading progress, highlights, notes) into Jesse’s AI context / “conversation corpus”.

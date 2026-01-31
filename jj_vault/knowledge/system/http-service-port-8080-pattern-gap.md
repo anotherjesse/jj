@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Recurring port-8080 deployment failures show missing standard HTTP service pattern; define ports/config, proxy assumptions, and deploy checklist.
 ---
 ## Problem
 A recurring deployment issue across projects relates to **port 8080**, indicating a lack of standardized/documented patterns for running and deploying HTTP services.

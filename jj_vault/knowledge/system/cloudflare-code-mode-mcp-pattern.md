@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: 'Cloudflare Code Mode: LLM writes TypeScript that calls MCP tool APIs via one TS-execution tool, enabling chained steps and leveraging TS priors.'
 ---
 ## Summary
 Cloudflare’s “Code Mode” proposes using LLMs to **write code that calls MCP tools** rather than having the LLM call MCP tools directly. MCP schemas are converted into a TypeScript API; the agent receives a single tool to execute TypeScript.

@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKKWB9TDHWX5V9423PZ1BG
 supersedes: []
+summary: 'Sparks prefers a simple, single-purpose CLI and splits responsibility: agents write code/tests, humans do QA/smoke verification; agent tests aren’t proof.'
 ---
 ## CLI/product philosophy (Sparks)
 - Prefer a **simple CLI that does one thing well**, avoiding an all-in-one “monster.”

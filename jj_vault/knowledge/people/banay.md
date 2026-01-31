@@ -14,6 +14,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Banay wrote “Don’t Waste Your Back Pressure,” urging automated feedback loops (tests/errors/screenshots) so AI agents self-correct and save review time.
 ---
 ## Summary
 Banay is cited as the author of “Don’t Waste Your Back Pressure,” an article advocating automated feedback loops for AI agents.

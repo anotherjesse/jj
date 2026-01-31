@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAKJXVY906XCK7PZ4K4TCT8
 supersedes: []
+summary: OpenClaw schedules jobs in the Gateway process via at/every/cron triggers, running in main session or isolated cron:<jobId> sessions.
 ---
 ## Scheduling mechanisms
 

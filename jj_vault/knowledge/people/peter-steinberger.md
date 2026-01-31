@@ -14,6 +14,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: 'Peter Steinberger authored “Shipping at Inference-Speed” (Dec 2025) on GPT‑5.2/Codex workflows: parallel queues, model-driven edits, solo main commits.'
 ---
 ## Summary
 Peter Steinberger is cited as the author of “Shipping at Inference-Speed” (Dec 2025), describing high-throughput workflows with advanced coding models (GPT‑5.2/Codex).

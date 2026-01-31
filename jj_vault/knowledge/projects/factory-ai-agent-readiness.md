@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: 'Factory.ai Agent Readiness (Jan 2026): framework/tools to assess if codebase docs, tests, CI/CD & feedback loops enable reliable AI agents.'
 ---
 ## Summary
 Factory.ai “Agent Readiness” (Jan 2026) is a framework and set of tools for assessing whether a codebase’s feedback loops and engineering practices support reliable AI agent contributions.

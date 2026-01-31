@@ -18,6 +18,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: 'Spec for `jj chat` v0.1: REPL CLI to local Gateway daemon w/ streaming deltas, session mgmt (`main`, flags), and slash cmds (/help,/session,/history,/restart).'
 ---
 ## JJ Gateway v0.1 CLI UX (`jj chat`)
 - Provides a **REPL-like** chat experience backed by the local Gateway daemon.

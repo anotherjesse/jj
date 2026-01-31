@@ -21,6 +21,7 @@ sources:
   event_ids:
   - src_01KGAMJZD7RGD1SHMHS18R8A2G
 supersedes: []
+summary: 'Vibewire: LoopWork’s shelved dev-tools concept; pivoted to AI for media due to crowded market, some internal use, shifting to modular systems.'
 ---
 ## Summary
 Vibewire was a developer-tools concept explored prior to LoopWork’s current “AI for media” direction. The company pivoted away from dev tools, citing an oversaturated market and heavy investment by large model companies.

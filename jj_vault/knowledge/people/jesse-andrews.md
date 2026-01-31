@@ -25,6 +25,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Jesse Andrews, CTO at LoopWork in Berkeley; ex-NASA OpenStack builder, Planet.com SVP Eng, GitHub @anotherjesse, deep AI (2018–21).
 ---
 ## Role
 - CTO at LoopWork

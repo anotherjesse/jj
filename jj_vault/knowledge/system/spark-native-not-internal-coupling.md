@@ -16,6 +16,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
+summary: Defines LoopWork “Spark-native apps” as agentic frameworks on Spark while keeping external apps standalone and avoiding coupling to internal-only systems.
 ---
 ## Definition / principle
 Within LoopWork, a **“Spark native app”** is an application built as an **agentic computing framework on Spark/Sparks**.

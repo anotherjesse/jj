@@ -19,6 +19,7 @@ sources:
   event_ids:
   - src_01KGAKQYA2PRMPRV128VBJMAR2
 supersedes: []
+summary: 'JJ Gateway v0.1: local-first daemon plus CLI REPL and Telegram bot routing, with durable replayable sessions and an agent loop.'
 ---
 ## Overview
 JJ Gateway v0.1 is a **local-first control-plane daemon** (`jj gateway`) plus a **CLI REPL** (`jj chat`) and a **Telegram bot adapter**. The daemon owns session storage, agent execution, and routing messages between channels.

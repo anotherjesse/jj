@@ -15,6 +15,7 @@ sources:
   event_ids:
   - src_01KGAKS8MG1Q0BZ28ZC7MSHR2F
 supersedes: []
+summary: Back pressure boosts AI agent reliability via immediate automated correctness signals (types, tests, build/UI output) enabling early self-correction.
 ---
 ## Summary
 “Back pressure” is a pattern for increasing AI agent reliability and horizon length by giving the agent **immediate, automated signals** about correctness and quality (compiler/type errors, tests, build output, UI screenshots). These signals let the agent detect mistakes early and self-correct.
