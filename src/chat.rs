@@ -14,7 +14,7 @@ use crate::thread_store::{
 };
 use crate::vault::{init_vault, resolve_vault};
 
-pub struct ReplOptions {
+pub struct ChatOptions {
     pub vault: Option<PathBuf>,
     pub thread: Option<PathBuf>,
     pub model: Option<String>,
@@ -22,7 +22,7 @@ pub struct ReplOptions {
     pub history: usize,
 }
 
-pub fn run_repl(options: ReplOptions) -> Result<()> {
+pub fn run_chat(options: ChatOptions) -> Result<()> {
     dotenv().ok();
 
     let vault = resolve_vault(options.vault);

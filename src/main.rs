@@ -6,7 +6,7 @@ mod git_utils;
 mod ingest;
 mod knowledge;
 mod openai;
-mod repl;
+mod chat;
 mod thread_store;
 mod vault;
 
@@ -20,7 +20,7 @@ use crate::audit::append_ledger;
 use crate::git_utils::git_commit;
 use crate::ingest::{run_ingest, IngestOptions};
 use crate::knowledge::{apply_patch, KnowledgePatch};
-use crate::repl::{run_repl, ReplOptions};
+use crate::chat::{run_chat, ChatOptions};
 use crate::thread_store::{append_event, build_event, create_thread, read_thread, EventType, Role};
 use crate::vault::{init_vault, resolve_vault};
 
@@ -297,7 +297,7 @@ fn main() -> Result<()> {
             allow_commit,
             history,
         } => {
-            run_repl(ReplOptions {
+            run_chat(ChatOptions {
                 vault,
                 thread,
                 model,
