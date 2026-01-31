@@ -12,7 +12,7 @@ use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use tokio::net::TcpListener;
 use tokio::signal;
-use tracing::{info, warn};
+use tracing::info;
 
 /// Default gateway port.
 const DEFAULT_PORT: u16 = 9123;

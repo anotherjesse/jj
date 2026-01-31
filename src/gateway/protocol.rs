@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Client-to-server request frame.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
     /// Always "req"
@@ -41,6 +42,7 @@ pub struct ErrorPayload {
 }
 
 /// Server-to-client event frame (push).
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
     /// Always "event"
@@ -93,6 +95,7 @@ impl Response {
 }
 
 impl Event {
+    #[allow(dead_code)]
     pub fn new(event: impl Into<String>, session_id: impl Into<String>, payload: Value) -> Self {
         Self {
             frame_type: "event".into(),

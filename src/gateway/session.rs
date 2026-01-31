@@ -74,6 +74,7 @@ impl SessionManager {
         })
     }
 
+    #[allow(dead_code)]
     pub fn vault_path(&self) -> &Path {
         &self.vault_path
     }
@@ -222,6 +223,7 @@ impl SessionManager {
     }
 
     /// Subscribe to a session's events (without sending a message).
+    #[allow(dead_code)]
     pub async fn subscribe(
         &self,
         session_key: &str,

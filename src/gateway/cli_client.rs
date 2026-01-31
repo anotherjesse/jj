@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-use super::{ensure_token, gateway_dir, resolve_port};
+use super::{gateway_dir, resolve_port};
 
 /// Connect to the gateway daemon, authenticate, and return a split WS connection.
 pub async fn connect() -> Result<(
