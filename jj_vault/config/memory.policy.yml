@@ -1,7 +1,0 @@
-# Memory governance policy defaults
-auto_apply:
-  confidence_threshold: 0.8
-  risk_levels: ["low"]
-
-queue_for_review:
-  risk_levels: ["medium", "high"]

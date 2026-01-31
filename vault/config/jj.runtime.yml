@@ -1,6 +1,0 @@
-# JJ runtime configuration
-providers:
-  default: "openai"
-
-logging:
-  level: "info"
