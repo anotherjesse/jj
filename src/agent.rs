@@ -219,11 +219,14 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "knowledge_apply",
-                "description": "Apply a knowledge patch (front matter + body) and append to audit ledger.",
+                "description": "Create or update a knowledge document. The patch object controls what gets written. IMPORTANT: use body_append to write body content; without it the doc will have an empty body.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "patch": { "type": "object" },
+                        "patch": {
+                            "type": "object",
+                            "description": "Knowledge patch. Fields: doc_path (required, vault-relative path), title (required for new), type (required for new, e.g. source_summary/project/person/preference/system), status, confidence (0-1), tags_add (array), tags_remove (array), body_append (markdown string - THE BODY CONTENT), sources_add (array of {thread_id, event_ids}), supersedes_add (array of doc IDs)"
+                        },
                         "author": { "type": "string" },
                         "reason": { "type": "string" },
                         "proposal_id": { "type": "string" },

@@ -232,30 +232,29 @@ fn load_ingest_prompt(vault: &Path, slug: &str, source_id: &str) -> Result<Strin
 }
 
 fn default_ingest_prompt() -> String {
-    r#"You are JJ's ingestion agent. You have been given an external document to process.
-
-Your tasks:
-1. Read and understand the document thoroughly.
-2. Search existing knowledge for related content using knowledge_search.
-3. Write a concise summary (200-500 words) to summaries/sources/{slug}.md using knowledge_apply with:
-   - title: "Summary: <document title>"
-   - type: "source_summary"
-   - confidence: 0.8
-   - The body should contain an overview and key points.
-4. Extract discrete knowledge items and create them using knowledge_apply:
-   - People mentioned → knowledge/people/<name>.md
-   - Projects described → knowledge/projects/<name>.md
-   - Preferences stated → knowledge/prefs/<name>.md
-   - System facts → knowledge/system/<name>.md
-5. For each extraction, search existing knowledge first to avoid duplicates or to supersede existing docs.
-
-Every knowledge_apply call needs:
-- author: "ingest-agent"
-- reason: explain why this knowledge is being extracted
-- patch.doc_path: the target path relative to vault root
-- patch.title, patch.type: required for new docs
-
-Follow the invariants. Every write needs a reason and source references."#
+    concat!(
+        "You are JJ's ingestion agent. You have been given an external document to process.\n\n",
+        "Your tasks:\n",
+        "1. Read and understand the document thoroughly.\n",
+        "2. Search existing knowledge for related content using knowledge_search.\n",
+        "3. Write a concise summary (200-500 words) to summaries/sources/{slug}.md using knowledge_apply.\n",
+        "4. Extract discrete knowledge items and create them using knowledge_apply:\n",
+        "   - People mentioned -> knowledge/people/<name>.md\n",
+        "   - Projects described -> knowledge/projects/<name>.md\n",
+        "   - Preferences stated -> knowledge/prefs/<name>.md\n",
+        "   - System facts -> knowledge/system/<name>.md\n",
+        "5. For each extraction, search existing knowledge first to avoid duplicates or to supersede existing docs.\n\n",
+        "## knowledge_apply patch format\n\n",
+        "The patch object supports: doc_path (required), title (required for new), type (required for new),\n",
+        "status, confidence (0-1), tags_add, body_append, sources_add, supersedes_add.\n\n",
+        "IMPORTANT: body_append is how you write body content. Without it, the doc will have an empty body.\n",
+        "Always include body_append with meaningful markdown content for every knowledge_apply call.\n\n",
+        "Every knowledge_apply call needs:\n",
+        "- author: \"ingest-agent\"\n",
+        "- reason: explain why this knowledge is being extracted\n",
+        "- patch.body_append: the actual markdown content (NEVER omit this)\n\n",
+        "Follow the invariants. Every write needs a reason and source references.",
+    )
         .to_string()
 }
 
