@@ -1,29 +1,37 @@
 ---
-id: mem_01KGAHTRP7MB7THJY9XXFJVQZH
-title: CTO Priorities (Carl sync 2025-01-23)
+id: mem_01KGAKR395681CT4B2BK72DT2C
+title: CTO Priorities (2025-01-23 sync)
 type: source_summary
 status: active
 tags:
 - priorities
-- loopwork
-- sparks
+- cto
 - roadmap
-confidence: 0.82
-created_at: 2026-01-31T17:32:53.319582Z
-updated_at: 2026-01-31T17:32:53.319582Z
+- sparks
+- loopwork
+confidence: 0.86
+created_at: 2026-01-31T18:06:23.013310Z
+updated_at: 2026-01-31T18:06:23.013310Z
 sources:
 - thread_id: ''
   event_ids:
-  - src_01KGAHSVDN8HRDMTRPVTHV8MMW
+  - src_01KGAKP9BVDCXHC4JF6841GQZS
 supersedes: []
 ---
-## Summary
-This document captures LoopWork/Sparks CTO priorities as of a Carl sync on **2025-01-23** (last updated **2025-01-24**). The immediate track shows several infrastructure items completed/validated: a **TMUX sizing fix** (done), **Postgres snapshot patterns** validated (hard btrfs snapshots require no Postgres coordination; WAL crash recovery tolerates unannounced snapshots; enables fast DB forking, test fixtures, and migration rollback), and **SSH improvements** with tests passing (multi-connection + SFTP; a Zed hang appears to be a general Linux issue, not Sparks-specific).
+## Summary (2005-01-24 last updated; content from 2025-01-23 Carl sync)
+This document captures CTO-level priorities and near-term execution notes for LoopWork/Sparks.
 
-A key near-term deliverable is the **`spark-pg` service** (working as of 2025-01-25), implementing `spark-pg new/fork/connect/status` using the `spark-client` crate directly. This establishes a reusable pattern for additional services (e.g., Redis), with an open design question around how much complexity should live “inside” Spark vs outside.
+**Immediate deliverables (late Jan 2025):**
+- Completed/validated items:
+  - TMUX sizing fix (done).
+  - Postgres-on-btrfs snapshot patterns validated: hard snapshots require no Postgres coordination; WAL crash recovery tolerates unannounced snapshots; enables forking prod DB for testing/fixtures and rollbacking migrations.
+  - SSH improvements: multi-connection and SFTP working; tests pass; Zed terminal issues appear not Sparks-specific.
+- **spark-pg service** is working: implements `spark-pg new/fork/connect/status`, uses `spark-client` crate directly, and establishes a pattern for additional services (e.g., redis). Open design question: how much complexity should live inside Spark vs. outside services.
+- Remaining immediate work: dev Spark containers with KVM; and **dev/prod unification** (blocking) so deploy/setup/verify share a single flow with flag differences.
 
-Two urgent platform priorities remain: **Dev Spark containers with KVM** and **Dev/Prod unification** (explicitly labeled new + blocking). The latter aims to eliminate divergent dev vs prod scripts/flows/settings in favor of a single pathway with a flag difference, spanning deploy/setup/verify.
+**Current top priorities:**
+1. **Sparks self-hosting development**: make Sparks capable of developing itself, with clear trust boundaries, git workflows, and separation of source vs. data; goal is composable primitives ("LEGOs") that outpace alternatives.
+2. **Internal tooling (LoopWork)**: build an internal chat tool ("Loop chat" as first Spark-native app), support voice call/session logging, publish a shared skills repo at `loop.work/skills`, and crucially **record conversations for AI context** (Claude Code sessions, chats, calls) so future AIs can browse organizational history.
+3. **Agentic imagery exploration**: investigate what "Cursor for images" means and how agenticness applies to media; Q1 focus on images then video; includes inspiration from MattF’s Prologue CAD approach (variation generation, rapid evaluation, genetic algorithms for creativity).
 
-The **current top 3 priorities** are: (1) **Sparks self-hosting development**—make Sparks able to develop itself (trust, git workflows, and source vs data boundaries) with a goal of composable “LEGOs” that snap together faster than alternatives; (2) **internal tooling for LoopWork**, including moving from iMessage to a first Spark-native app (“Loop chat”), building voice call/session logging, a shared skills repo at `loop.work/skills`, and broad **conversation recording** (chats/calls/Claude sessions) so future AI can browse history for context; and (3) **agentic imagery exploration** (“Cursor for images”), with Q1 focus on images then video, referencing patterns like Prologue CAD (generate variations, rapid human eval, genetic algorithms).
-
-Open questions include a port **8080 documentation gap** for standardized HTTP service patterns, skills repo structure (manual sync → CLI), and external vs internal separation for Picnic. Parking-lot integrations include Granola transcripts, Readwise Reader sync, and an automated changelog service.
+**Big-picture framing:** AI tools feel "dead" when frozen into static apps; the agentic nature is the product. Envision "Spark Native Apps" that spin up dedicated Spark instances per collaborative context (e.g., per chat channel). Strategic options with ~$2M runway: build toward revenue vs. build awareness/reputation for potential acquihire.

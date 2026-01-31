@@ -1,7 +1,7 @@
 ---
-id: src_01KGAHSVDN8HRDMTRPVTHV8MMW
+id: src_01KGAKP9BVDCXHC4JF6841GQZS
 title: priorities
-ingested_at: 2026-01-31T17:32:23.349123+00:00
+ingested_at: 2026-01-31T18:05:23.707881+00:00
 original_path: /Users/jesse/cto/priorities.md
 tags: []
 processing_status: complete
