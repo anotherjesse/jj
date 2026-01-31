@@ -10,9 +10,9 @@ tags:
 - btrfs
 - rust
 - cli
-confidence: 0.82
+confidence: 0.75
 created_at: 2026-01-31T18:04:37.544114Z
-updated_at: 2026-01-31T18:06:23.014337Z
+updated_at: 2026-01-31T20:51:39.855821Z
 sources:
 - thread_id: ''
   event_ids:
@@ -76,3 +76,7 @@ Working toward Sparks being able to “develop itself” by moving development �
 - Ops/dev UX notes:
   - SSH multi-connection + SFTP reportedly working with tests passing (2025-01-25).
   - Zed terminal "spins on connect" issue is likely not Sparks-specific.
+
+## Update (2026-01-31) — tmux sizing fix details
+- Fix came from **improving SSH PTY handling in Sparks** ("making ssh do pty better") rather than a tmux-only config tweak.
+- Added **additional verifications/tests for SSH flows in Sparks** to prevent regressions.

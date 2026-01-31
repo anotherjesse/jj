@@ -11,9 +11,9 @@ tags:
 - sparks
 - rust
 - cloud
-confidence: 0.74
+confidence: 0.8
 created_at: 2026-01-31T18:03:27.397560Z
-updated_at: 2026-01-31T18:19:56.495493Z
+updated_at: 2026-01-31T20:48:29.544082Z
 sources:
 - thread_id: ''
   event_ids:
@@ -58,3 +58,6 @@ These items are beliefs/framings associated with Jesse in the Sparks design doc;
 - Implement simple **Postgres patterns**: persistent instances for prod; ephemeral/throwaway instances for tests/verification; backup + fork workflow for staging (reference: `test_postgres.sh`).
 - Improve SSH ergonomics: enable multiple connections per node; restore **SCP/SFTP** (blocks Zed integration); fix Zed remote-edit links.
 - Enable dev Spark containers with **KVM**: run Kate inside container with networking (only required from dev node).
+
+## Update (2026-01-31)
+- **tmux sizing in SSH/tmux: resolved** (completed a couple days prior to 2026-01-31). Previously a top operational blocker.
