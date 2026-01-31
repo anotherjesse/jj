@@ -1,31 +1,31 @@
 ---
-id: mem_01KGAHRHBQQ0VJS66BT0Z4WFB1
-title: 'Sparks (source: src_01KGAHQM5C1W0DZ2N3XS49GQPP)'
+id: mem_01KGAKMW97ZEA3AK14GBMAJ61T
+title: sparks (source summary)
 type: source_summary
 status: active
 tags:
-- loopwork
 - sparks
-- infrastructure
+- dev-tools
 - agentic-compute
-confidence: 0.9
-created_at: 2026-01-31T17:31:40.279620Z
-updated_at: 2026-01-31T17:31:40.279620Z
+- containers
+- btrfs
+- rust
+confidence: 0.88
+created_at: 2026-01-31T18:04:37.543321Z
+updated_at: 2026-01-31T18:04:37.543321Z
 sources:
 - thread_id: ''
   event_ids:
-  - src_01KGAHQM5C1W0DZ2N3XS49GQPP
+  - src_01KGAKKWB9TDHWX5V9423PZ1BG
 supersedes: []
 ---
 ## Summary
-Sparks is a LoopWork project that provides **instant sandbox environments** (“sparks”) with **persistent filesystems**. Each spark runs in an **isolated container** with its own root filesystem, backed by **btrfs snapshots** for fast cloning and restore. The repo is `github.com/loopwork/sparks` and the local path is `~/lw/sparks`. It is implemented in **Rust** and is described as Jesse’s first Rust project (with the motto “if it compiles, it works”). Sparks is presented as a spiritual successor to **Vibewire**, a previous monolithic Elixir system.
+Sparks is a CLI-first system for creating **instant sandbox environments** (“sparks”) that run in isolated containers with **persistent filesystems**. Each spark has its own root filesystem backed by **btrfs snapshots**, enabling fast lifecycle operations and hard snapshot/restore. The repository is `github.com/loopwork/sparks`, with a local path noted as `~/lw/sparks`. It is written in **Rust** and described as Jesse’s first Rust project (tagline: “if it compiles, it works”). Sparks is positioned as a spiritual successor to **Vibewire**, previously a monolithic Elixir system.
 
-The product philosophy emphasizes a **simple CLI** that does one thing well, with a clear division of responsibilities: **coding agents** own the code and tests, while **humans own verification** via QA/smoke tests; agent-written tests passing are treated as necessary but not sufficient (“outsourced dev” analogy).
+The philosophy emphasizes a **simple CLI that does one thing well**, avoiding an “all-in-one monster.” It distinguishes responsibilities: **coding agents** should own code and tests, while **humans** own verification via automated QA/smoke tests; agent-generated passing tests are not treated as sufficient proof of correctness.
 
-Core CLI capabilities include lifecycle management (`spark create/delete/stop/resume`), command execution and shells (`spark exec/console`), snapshotting (`spark snapshot create/restore`), templating (`spark base`), persistent volumes across sparks (`spark data`), and secrets management via **1Password integration** (`spark secrets`). Sparks supports “projects” for namespace isolation (auto-detected from git repos) and **ephemeral sparks** designated with `-` that auto-delete on exit.
+Core commands include lifecycle management (`spark create/delete/stop/resume`), running commands and shells (`spark exec/console`), snapshotting (`spark snapshot create/restore`), templating (`spark base`), persistent cross-spark volumes (`spark data`), and **1Password** integration (`spark secrets`). It supports project-based namespace isolation (auto-detected from git repos) and ephemeral sparks denoted with `-` that auto-delete on exit.
 
 Sparks auto-mounts shared volumes: `/spark/bin` (global executables), `/spark/all` (global shared data), and `/spark/proj` (per-project shared data).
 
-Strategically, Sparks is framed as “**agentic-first cloud compute**”: infrastructure that makes agentic workloads feel like cloud did for VMs (time/space shifting, scale up/down). A key motivation is the “**deadness**” of freezing agent-built experiences into static apps; Sparks explores blurred boundaries between dev mode vs shipped product and human collaboration mediated by agents. A validated capability (2025-01-24) is that **hard btrfs snapshots work with stateful apps** like Postgres without coordination (WAL crash recovery suffices), supporting “fork anything anytime.”
-
-(Last updated in source: 2025-01-23)
+The broader vision frames Sparks as “agentic-first cloud compute,” analogous to OpenStack’s role for VMs. It argues that “frozen” agent-built apps feel “dead” and explores blurred boundaries between dev mode and shipped product, static apps vs. just-in-time interfaces, and human collaboration mediated by agents. A validated capability (2025-01-24) is that unannounced btrfs snapshots work with stateful apps: Postgres survives via WAL crash recovery, supporting “fork anything anytime.” Status as of 2025-01-23: focusing on making Sparks able to develop itself by moving development “onto the inside,” refining git workflows and source/data trust boundaries, and building composable “LEGOs.”

@@ -1,7 +1,7 @@
 ---
-id: src_01KGAHQM5C1W0DZ2N3XS49GQPP
+id: src_01KGAKKWB9TDHWX5V9423PZ1BG
 title: sparks
-ingested_at: 2026-01-31T17:31:10.380342+00:00
+ingested_at: 2026-01-31T18:04:04.841595+00:00
 original_path: /Users/jesse/cto/context/sparks.md
 tags: []
 processing_status: complete
