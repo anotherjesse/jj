@@ -23,3 +23,6 @@ repl vault="jj_vault":
 
 embed-index vault="jj_vault":
 	cargo run -- index --vault {{vault}}
+
+install:
+	cargo install --path . --root ~/.local
