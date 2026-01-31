@@ -1,7 +1,7 @@
 ---
-id: src_01KGAHMHCW60JR4TWZ1X6Q1C9M
+id: src_01KGAKHQV1JD69416ZPE0RZ06Q
 title: company
-ingested_at: 2026-01-31T17:29:29.244063+00:00
+ingested_at: 2026-01-31T18:02:54.689968+00:00
 original_path: /Users/jesse/cto/context/company.md
 tags: []
 processing_status: complete
