@@ -328,6 +328,22 @@ pub fn tool_schemas() -> Vec<Value> {
                 }
             }
         }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "draw",
+                "description": "Draw an image onto the user's canvas using rcast. Accepts a URL or local file path. Use this to show images, diagrams, or visual content to the user.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "source": { "type": "string", "description": "URL or local file path of the image to display." },
+                        "overlay": { "type": "boolean", "description": "If true, overlay on existing canvas instead of clearing." },
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["source", "reason"]
+                }
+            }
+        }),
     ]
 }
 
@@ -524,6 +540,42 @@ fn execute_tool(
                 }
             }
             Ok(json!({ "mode": "substring", "count": matches.len(), "matches": matches }))
+        }
+        "draw" => {
+            let source = args
+                .get("source")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("draw requires 'source' (URL or file path)"))?;
+
+            // If source looks like a URL, download to a temp file first.
+            let file_path = if source.starts_with("http://") || source.starts_with("https://") {
+                let resp = reqwest::blocking::get(source)?;
+                if !resp.status().is_success() {
+                    return Err(anyhow!("failed to download {source}: HTTP {}", resp.status()));
+                }
+                let bytes = resp.bytes()?;
+                let ext = source.rsplit('.').next().unwrap_or("png");
+                let tmp = std::env::temp_dir().join(format!("jj_draw.{ext}"));
+                fs::write(&tmp, &bytes)?;
+                tmp
+            } else {
+                PathBuf::from(source)
+            };
+
+            let mut cmd = std::process::Command::new("rcast");
+            cmd.arg("draw").arg(&file_path);
+
+            if let Some(true) = args.get("overlay").and_then(|v| v.as_bool()) {
+                cmd.arg("--overlay");
+            }
+
+            let output = cmd.output()?;
+            if output.status.success() {
+                Ok(json!({ "drawn": source }))
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Err(anyhow!("rcast draw failed: {stderr}"))
+            }
         }
         "knowledge_index" => {
             let client = EmbeddingClient::from_env()?;
