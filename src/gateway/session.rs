@@ -21,17 +21,23 @@ pub struct SessionEntry {
     pub thread_id: String,
     pub thread_path: String,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_user_line: Option<String>,
 }
 
 /// Runtime state for a single session.
 struct SessionState {
-    entry: SessionEntry,
+    entry: RwLock<SessionEntry>,
     /// Limits to 1 concurrent agent run per session.
     run_semaphore: Arc<Semaphore>,
     /// All subscribed clients for this session.
     subscribers: Mutex<Vec<mpsc::UnboundedSender<Value>>>,
     /// Flag indicating whether a deep_think background task is running.
     deep_think_running: Arc<AtomicBool>,
+    /// Flag indicating whether title generation is running.
+    title_running: Arc<AtomicBool>,
 }
 
 /// Manages all sessions, backed by sessions.json in the vault.
@@ -55,15 +61,38 @@ impl SessionManager {
                 .with_context(|| format!("read {}", index_path.display()))?;
             let entries: Vec<SessionEntry> = serde_json::from_str(&content)
                 .with_context(|| "parse sessions.json")?;
-            for entry in entries {
+            for mut entry in entries {
+                // Enrich from thread JSONL if title/first_user_line not cached
+                if entry.title.is_none() || entry.first_user_line.is_none() {
+                    let thread_path = PathBuf::from(&entry.thread_path);
+                    if let Ok(lines) = read_thread(&thread_path, None, None) {
+                        for line in &lines {
+                            if let Ok(event) = serde_json::from_str::<crate::thread_store::ThreadEvent>(line) {
+                                if entry.first_user_line.is_none()
+                                    && matches!(event.event_type, EventType::UserMessage)
+                                {
+                                    if let Some(Value::String(s)) = &event.content {
+                                        entry.first_user_line = Some(truncate_preview(s, 60));
+                                    }
+                                }
+                                if matches!(event.event_type, EventType::TitleGenerated) {
+                                    if let Some(Value::String(s)) = &event.content {
+                                        entry.title = Some(s.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 let key = entry.session_key.clone();
                 sessions.insert(
                     key,
                     Arc::new(SessionState {
-                        entry,
+                        entry: RwLock::new(entry),
                         run_semaphore: Arc::new(Semaphore::new(1)),
                         subscribers: Mutex::new(Vec::new()),
                         deep_think_running: Arc::new(AtomicBool::new(false)),
+                        title_running: Arc::new(AtomicBool::new(false)),
                     }),
                 );
             }
@@ -76,6 +105,21 @@ impl SessionManager {
             sessions: RwLock::new(sessions),
             index_path,
         })
+    }
+
+    /// Generate titles for existing sessions that have messages but no title.
+    pub async fn backfill_titles(self: &Arc<Self>) {
+        let sessions = self.sessions.read().await;
+        for state in sessions.values() {
+            let entry = state.entry.read().await;
+            if entry.title.is_none() {
+                if let Some(ref first_line) = entry.first_user_line {
+                    let content = first_line.clone();
+                    drop(entry);
+                    self.maybe_generate_title(state, &content).await;
+                }
+            }
+        }
     }
 
     #[allow(dead_code)]
@@ -94,7 +138,7 @@ impl SessionManager {
             if let Some(state) = sessions.get(session_key) {
                 let (tx, rx) = mpsc::unbounded_channel();
                 state.subscribers.lock().await.push(tx);
-                return Ok((state.entry.clone(), rx));
+                return Ok((state.entry.read().await.clone(), rx));
             }
         }
 
@@ -122,14 +166,17 @@ impl SessionManager {
             thread_id,
             thread_path: thread_path.to_string_lossy().to_string(),
             created_at: chrono::Utc::now().to_rfc3339(),
+            title: None,
+            first_user_line: None,
         };
 
         let (tx, rx) = mpsc::unbounded_channel();
         let state = Arc::new(SessionState {
-            entry: entry.clone(),
+            entry: RwLock::new(entry.clone()),
             run_semaphore: Arc::new(Semaphore::new(1)),
             subscribers: Mutex::new(vec![tx]),
             deep_think_running: Arc::new(AtomicBool::new(false)),
+            title_running: Arc::new(AtomicBool::new(false)),
         });
 
         {
@@ -145,7 +192,11 @@ impl SessionManager {
     /// List all sessions with metadata.
     pub async fn list(&self) -> Vec<SessionEntry> {
         let sessions = self.sessions.read().await;
-        sessions.values().map(|s| s.entry.clone()).collect()
+        let mut entries = Vec::new();
+        for s in sessions.values() {
+            entries.push(s.entry.read().await.clone());
+        }
+        entries
     }
 
     /// Fetch last N events from a session's thread transcript.
@@ -154,7 +205,7 @@ impl SessionManager {
         let state = sessions
             .get(session_key)
             .ok_or_else(|| anyhow!("session not found: {session_key}"))?;
-        let thread_path = PathBuf::from(&state.entry.thread_path);
+        let thread_path = PathBuf::from(&state.entry.read().await.thread_path);
         // Read all events then take last N
         let all = read_thread(&thread_path, None, None)?;
         let start = all.len().saturating_sub(limit);
@@ -176,7 +227,8 @@ impl SessionManager {
                 .ok_or_else(|| anyhow!("session not found: {session_key}"))?
         };
 
-        let thread_path = PathBuf::from(&state.entry.thread_path);
+        let entry_snapshot = state.entry.read().await.clone();
+        let thread_path = PathBuf::from(&entry_snapshot.thread_path);
 
         // Append user message to thread
         let user_event = build_event(
@@ -191,11 +243,23 @@ impl SessionManager {
         );
         append_event(&thread_path, user_event)?;
 
+        // Track first user line for preview + trigger title generation
+        {
+            let mut entry = state.entry.write().await;
+            if entry.first_user_line.is_none() {
+                let preview = truncate_preview(content, 60);
+                entry.first_user_line = Some(preview);
+            }
+        }
+        if entry_snapshot.title.is_none() && entry_snapshot.first_user_line.is_none() {
+            self.maybe_generate_title(&state, content).await;
+        }
+
         // Broadcast the user message to all subscribers
         let user_msg = json!({
             "type": "event",
             "event": "user_message",
-            "session_id": state.entry.session_key,
+            "session_id": entry_snapshot.session_key,
             "payload": { "content": content }
         });
         broadcast(&state.subscribers, &user_msg).await;
@@ -246,7 +310,8 @@ impl SessionManager {
 
     /// Run the agent loop for a session (blocking work wrapped in spawn_blocking).
     async fn run_agent(&self, session_key: &str, state: &SessionState) -> Result<()> {
-        let thread_path = PathBuf::from(&state.entry.thread_path);
+        let entry_snap = state.entry.read().await.clone();
+        let thread_path = PathBuf::from(&entry_snap.thread_path);
         let vault_path = self.vault_path.clone();
         let session_key_owned = session_key.to_string();
         let subscribers = state.subscribers.lock().await.clone();
@@ -346,7 +411,7 @@ impl SessionManager {
             None,
             None,
         );
-        append_event(&PathBuf::from(&state.entry.thread_path), completed)?;
+        append_event(&PathBuf::from(&entry_snap.thread_path), completed)?;
 
         result.map(|_| ())
     }
@@ -354,11 +419,115 @@ impl SessionManager {
     /// Persist the sessions index to disk.
     async fn persist_index(&self) -> Result<()> {
         let sessions = self.sessions.read().await;
-        let entries: Vec<&SessionEntry> = sessions.values().map(|s| &s.entry).collect();
+        let mut entries = Vec::new();
+        for s in sessions.values() {
+            entries.push(s.entry.read().await.clone());
+        }
         let json = serde_json::to_string_pretty(&entries)?;
         fs::write(&self.index_path, json.as_bytes())
             .with_context(|| format!("write {}", self.index_path.display()))?;
         Ok(())
+    }
+    /// Spawn background title generation for a session if not already running.
+    async fn maybe_generate_title(&self, state: &Arc<SessionState>, content: &str) {
+        use std::sync::atomic::Ordering;
+
+        if state.title_running.compare_exchange(
+            false, true, Ordering::SeqCst, Ordering::SeqCst,
+        ).is_err() {
+            return; // already running
+        }
+
+        let content = content.to_string();
+        let entry_snap = state.entry.read().await.clone();
+        let thread_path = PathBuf::from(&entry_snap.thread_path);
+        let session_key = entry_snap.session_key.clone();
+        let state = Arc::clone(state);
+
+        tokio::task::spawn_blocking(move || {
+            match generate_title_blocking(&content) {
+                Ok(title) => {
+                    // Append TitleGenerated event to thread JSONL
+                    let event = build_event(
+                        None,
+                        EventType::TitleGenerated,
+                        Role::System,
+                        Some(Value::String(title.clone())),
+                        None,
+                        None,
+                        None,
+                        Some("auto_title".to_string()),
+                    );
+                    if let Err(e) = append_event(&thread_path, event) {
+                        warn!(error = %e, "failed to append title event");
+                    }
+
+                    // Update cached entry + broadcast via tokio runtime
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(async {
+                        {
+                            let mut entry = state.entry.write().await;
+                            entry.title = Some(title.clone());
+                        }
+
+                        let title_event = json!({
+                            "type": "event",
+                            "event": "title_generated",
+                            "session_id": session_key,
+                            "payload": { "title": title }
+                        });
+                        broadcast(&state.subscribers, &title_event).await;
+                    });
+
+                    info!(session_key, "title generated");
+                }
+                Err(e) => {
+                    warn!(error = %e, "title generation failed");
+                }
+            }
+            state.title_running.store(false, Ordering::SeqCst);
+        });
+    }
+}
+
+/// Generate a title by calling a cheap LLM model.
+fn generate_title_blocking(first_message: &str) -> Result<String> {
+    use crate::openai::OpenAIClient;
+
+    dotenvy::dotenv().ok();
+    let api_key = std::env::var("OPENAI_API_KEY").context("OPENAI_API_KEY not set")?;
+    let base_url = std::env::var("OPENAI_BASE_URL")
+        .unwrap_or_else(|_| "https://api.openai.com".to_string());
+    let model = std::env::var("OPENAI_MODEL")
+        .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
+
+    let client = OpenAIClient::new(api_key, base_url, model);
+    let messages = vec![
+        json!({"role": "system", "content": "Generate a concise title (max 8 words) for this conversation. Return only the title, nothing else."}),
+        json!({"role": "user", "content": first_message}),
+    ];
+    let resp = client.chat(&messages, &[])?;
+    let title = resp.content.unwrap_or_default().trim().to_string();
+    // Truncate to 100 chars
+    let title = if title.len() > 100 {
+        title.chars().take(100).collect()
+    } else {
+        title
+    };
+    Ok(title)
+}
+
+/// Truncate a string to max chars at a word boundary.
+fn truncate_preview(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        return s.to_string();
+    }
+    let truncated: String = s.chars().take(max).collect();
+    // Try to break at last space
+    if let Some(pos) = truncated.rfind(' ') {
+        format!("{}…", &truncated[..pos])
+    } else {
+        format!("{truncated}…")
     }
 }
 

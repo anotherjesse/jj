@@ -624,8 +624,11 @@ fn execute_tool(
                 let tmp = std::env::temp_dir().join(format!("jj_draw.{ext}"));
                 fs::write(&tmp, &bytes)?;
                 tmp
-            } else {
+            } else if Path::new(source).is_absolute() {
                 PathBuf::from(source)
+            } else {
+                // Resolve relative paths against the vault root
+                vault.join(source)
             };
 
             let mut cmd = std::process::Command::new("rcast");
@@ -896,6 +899,7 @@ fn parse_event_type(value: &str) -> Result<EventType> {
         "system_note" => Ok(EventType::SystemNote),
         "attachment_added" => Ok(EventType::AttachmentAdded),
         "inner_monologue" => Ok(EventType::InnerMonologue),
+        "title_generated" => Ok(EventType::TitleGenerated),
         _ => Err(anyhow!("invalid event_type: {value}")),
     }
 }

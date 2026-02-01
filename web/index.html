@@ -68,6 +68,7 @@ const $$ = s => document.querySelectorAll(s);
 
 let ws = null;
 let currentSession = null;
+let draftMode = false;
 let pendingRequests = {};
 let reqCounter = 0;
 
@@ -103,6 +104,8 @@ function connect() {
       if (msg.ok) {
         setStatus(true, 'Connected');
         loadSessions();
+        const resumeSession = new URLSearchParams(location.search).get('session');
+        if (resumeSession) openSession(resumeSession);
       } else {
         setStatus(false, 'Auth failed: ' + (msg.error?.message || '?'));
       }
@@ -140,6 +143,12 @@ function handleEvent(msg) {
   const event = msg.event;
   const payload = msg.payload || {};
   const sessionId = msg.session_id;
+
+  // Title events should update sidebar for any session
+  if (event === 'title_generated') {
+    updateSessionTitle(sessionId, payload.title);
+    return;
+  }
 
   if (sessionId !== currentSession) return;
 
@@ -181,6 +190,16 @@ function handleEvent(msg) {
       addMessage('system', 'Error: ' + (payload.message || '?'));
       break;
   }
+}
+
+function updateSessionTitle(sessionKey, title) {
+  const items = $$('.session-item');
+  items.forEach(item => {
+    if (item.dataset.sessionKey === sessionKey) {
+      const keyEl = item.querySelector('.session-key');
+      if (keyEl) keyEl.textContent = title;
+    }
+  });
 }
 
 function addMessage(role, text) {
@@ -240,10 +259,13 @@ async function loadSessions() {
 function renderSessionList(sessions) {
   const el = $('#session-list');
   el.innerHTML = '';
+  sessions.sort((a, b) => (b.updated_at || b.created_at || '').localeCompare(a.updated_at || a.created_at || ''));
   sessions.forEach(s => {
     const div = document.createElement('div');
     div.className = 'session-item' + (s.session_key === currentSession ? ' active' : '');
-    div.innerHTML = `<div class="session-key">${esc(s.session_key)}</div><div class="session-meta">${esc(s.thread_id)}</div>`;
+    const displayName = s.title || s.first_user_line || s.session_key;
+    div.dataset.sessionKey = s.session_key;
+    div.innerHTML = `<div class="session-key">${esc(displayName)}</div><div class="session-meta">${esc(s.thread_id)}</div>`;
     div.onclick = () => openSession(s.session_key);
     el.appendChild(div);
   });
@@ -251,6 +273,11 @@ function renderSessionList(sessions) {
 
 async function openSession(key) {
   currentSession = key;
+  // Persist session in URL for refresh
+  const url = new URL(location.href);
+  url.searchParams.set('session', key);
+  history.replaceState(null, '', url.toString());
+
   await send('session.open', { session_key: key });
 
   $('#chat-header').textContent = 'Session: ' + key;
@@ -282,10 +309,22 @@ async function openSession(key) {
 async function sendMessage() {
   const input = $('#input');
   const text = input.value.trim();
-  if (!text || !currentSession) return;
+  if (!text) return;
+  if (!currentSession && !draftMode) return;
   input.value = '';
   try {
+    if (draftMode) {
+      const key = 'session-' + Date.now();
+      await send('session.open', { session_key: key });
+      currentSession = key;
+      draftMode = false;
+      const url = new URL(location.href);
+      url.searchParams.set('session', key);
+      history.replaceState(null, '', url.toString());
+      $('#chat-header').textContent = 'Session: ' + key;
+    }
     await send('session.send', { session_key: currentSession, content: text });
+    loadSessions();
   } catch (e) {
     addMessage('system', 'Send failed: ' + e.message);
   }
@@ -293,9 +332,26 @@ async function sendMessage() {
 
 $('#send').onclick = sendMessage;
 $('#input').onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); };
-$('#new-session').onclick = () => {
-  const key = 'session-' + Date.now();
-  openSession(key);
+$('#new-session').onclick = async () => {
+  currentSession = null;
+  draftMode = true;
+  deltaDiv = null;
+  $('#chat-header').textContent = 'New conversation';
+  $('#messages').innerHTML = '';
+  $('#input').disabled = false;
+  $('#send').disabled = false;
+  // Remove session from URL
+  const url = new URL(location.href);
+  url.searchParams.delete('session');
+  history.replaceState(null, '', url.toString());
+  // Deselect sidebar items
+  $$('.session-item').forEach(i => i.classList.remove('active'));
+  // Fetch and display system prompt
+  try {
+    const result = await send('system.prompt', {});
+    if (result.prompt) addMessage('system', result.prompt);
+  } catch (_) {}
+  $('#input').focus();
 };
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

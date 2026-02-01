@@ -248,6 +248,8 @@ async fn dispatch_method(
                             "session_key": entry.session_key,
                             "thread_id": entry.thread_id,
                             "created_at": entry.created_at,
+                            "title": entry.title,
+                            "first_user_line": entry.first_user_line,
                         }),
                     )
                 }
@@ -264,6 +266,8 @@ async fn dispatch_method(
                         "session_key": e.session_key,
                         "thread_id": e.thread_id,
                         "created_at": e.created_at,
+                        "title": e.title,
+                        "first_user_line": e.first_user_line,
                     })
                 })
                 .collect();
@@ -312,6 +316,14 @@ async fn dispatch_method(
                     };
                     protocol::Response::err(id, code, e.to_string())
                 }
+            }
+        }
+
+        "system.prompt" => {
+            let vault_path = state.sessions.vault_path();
+            match crate::chat::load_system_prompt(vault_path) {
+                Ok(prompt) => protocol::Response::ok(id, json!({ "prompt": prompt })),
+                Err(e) => protocol::Response::err(id, "system.prompt.failed", e.to_string()),
             }
         }
 

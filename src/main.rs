@@ -207,6 +207,32 @@ enum GatewayCommand {
     Stop,
     /// Check if the gateway daemon is running
     Status,
+    /// List all sessions
+    List,
+    /// Open or create a session
+    Open {
+        /// Session key (default: "main")
+        #[arg(default_value = "main")]
+        session_key: String,
+    },
+    /// Fetch session history
+    History {
+        /// Session key
+        session_key: String,
+        /// Max events to return
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Send a message to a session
+    Send {
+        /// Session key
+        session_key: String,
+        /// Message content
+        message: String,
+        /// Block until agent responds (optional timeout in seconds, default 120)
+        #[arg(long)]
+        wait: Option<Option<u64>>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -262,6 +288,18 @@ async fn main() -> Result<()> {
                     } else {
                         println!("gateway is not running");
                     }
+                }
+                GatewayCommand::List => {
+                    gateway::handle_list().await?;
+                }
+                GatewayCommand::Open { session_key } => {
+                    gateway::handle_open(&session_key).await?;
+                }
+                GatewayCommand::History { session_key, limit } => {
+                    gateway::handle_history(&session_key, limit).await?;
+                }
+                GatewayCommand::Send { session_key, message, wait } => {
+                    gateway::handle_send(&session_key, &message, wait).await?;
                 }
             }
         }
