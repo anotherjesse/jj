@@ -424,7 +424,7 @@ async fn main() -> Result<()> {
             let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
             let model = model
                 .or_else(|| env::var("OPENAI_MODEL").ok())
-                .unwrap_or_else(|| "gpt-5.2-2025-12-11".to_string());
+                .unwrap_or_else(|| "gpt-5-mini-2025-08-07".to_string());
             let client = OpenAIClient::new(api_key, base_url, model);
 
             let root = vault.join("knowledge");

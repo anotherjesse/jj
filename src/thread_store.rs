@@ -16,6 +16,7 @@ pub enum EventType {
     ToolResult,
     SystemNote,
     AttachmentAdded,
+    InnerMonologue,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, clap::ValueEnum)]

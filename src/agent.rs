@@ -18,8 +18,16 @@ use crate::vault::init_vault;
 /// Events emitted during an agent run for live streaming to clients.
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
-    /// Tool call started
-    ToolActivity { tool_name: String },
+    /// Tool call started — includes the arguments so callers can show what's happening
+    ToolCallStart {
+        tool_name: String,
+        arguments: Value,
+    },
+    /// Tool call finished — includes the result
+    ToolCallResult {
+        tool_name: String,
+        result: Value,
+    },
     /// Final assistant message content
     FinalContent { content: String },
 }
@@ -87,7 +95,10 @@ pub fn run_agent_loop(
 
         for call in response.tool_calls {
             if let Some(ref sink) = config.event_sink {
-                let _ = sink.send(AgentEvent::ToolActivity { tool_name: call.name.clone() });
+                let _ = sink.send(AgentEvent::ToolCallStart {
+                    tool_name: call.name.clone(),
+                    arguments: call.arguments.clone(),
+                });
             }
             let reason = call
                 .arguments
@@ -119,6 +130,13 @@ pub fn run_agent_loop(
                 Ok(data) => json!({"status": "ok", "data": data}),
                 Err(err) => json!({"status": "error", "error": err.to_string()}),
             };
+
+            if let Some(ref sink) = config.event_sink {
+                let _ = sink.send(AgentEvent::ToolCallResult {
+                    tool_name: call.name.clone(),
+                    result: result_value.clone(),
+                });
+            }
 
             let tool_result_event = build_event(
                 None,
@@ -341,6 +359,24 @@ pub fn tool_schemas() -> Vec<Value> {
                         "reason": { "type": "string" }
                     },
                     "required": ["source", "reason"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "deep_think",
+                "description": "Trigger deep thinking. Calls a slower model to reflect on the conversation, search knowledge, and produce inner monologue. The result is appended to the thread as internal context visible on your next turn. Use when the conversation would benefit from deeper analysis, pattern recognition, or knowledge retrieval. The inner monologue will NOT be shown to the user.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "What to think about. If omitted, reflects on the overall conversation."
+                        },
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["reason"]
                 }
             }
         }),
@@ -588,6 +624,82 @@ fn execute_tool(
                 "model": stats.model
             }))
         }
+        "deep_think" => {
+            let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+            let reason = args
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("deep_think");
+
+            // Read recent thread events for context
+            let lines = read_thread(thread_path, None, Some(50))?;
+            let mut transcript = String::new();
+            for line in &lines {
+                if let Ok(event) = serde_json::from_str::<crate::thread_store::ThreadEvent>(line) {
+                    let role_label = match event.role {
+                        Role::User => "User",
+                        Role::Assistant => "Assistant",
+                        Role::System => "System",
+                        Role::Tool => "Tool",
+                    };
+                    if let Some(content) = &event.content {
+                        let text = match content {
+                            Value::String(s) => s.clone(),
+                            other => other.to_string(),
+                        };
+                        if !text.is_empty() {
+                            transcript.push_str(&format!("{role_label}: {text}\n"));
+                        }
+                    }
+                }
+            }
+
+            // Build inner-voice messages
+            let system_msg = "You are the inner voice of an AI assistant named JJ. \
+                You are thinking privately — nothing you say will be shown to the user. \
+                Reflect on the conversation so far. Note patterns, form hypotheses, \
+                identify what you know vs don't know, and suggest what to explore or say next. \
+                Be concise but thorough. Write in first person as inner thoughts.";
+
+            let mut deep_messages = vec![json!({"role": "system", "content": system_msg})];
+            if !transcript.is_empty() {
+                deep_messages.push(json!({"role": "user", "content": format!("Here is the conversation so far:\n\n{transcript}")}));
+            }
+            if !prompt.is_empty() {
+                deep_messages.push(json!({"role": "user", "content": format!("Focus your thinking on: {prompt}")}));
+            } else {
+                deep_messages.push(json!({"role": "user", "content": "Reflect on the overall conversation. What patterns do you see? What should I consider next?"}));
+            }
+
+            // Use a configurable model for deep thinking
+            let api_key = std::env::var("OPENAI_API_KEY")
+                .map_err(|_| anyhow!("OPENAI_API_KEY not set"))?;
+            let base_url = std::env::var("OPENAI_BASE_URL")
+                .unwrap_or_else(|_| "https://api.openai.com".to_string());
+            let deep_model = std::env::var("OPENAI_DEEP_THINK_MODEL")
+                .or_else(|_| std::env::var("OPENAI_MODEL"))
+                .unwrap_or_else(|_| "gpt-5.2-2025-12-11".to_string());
+
+            let client = OpenAIClient::new(api_key, base_url, deep_model);
+            let response = client.chat(&deep_messages, &[])?;
+
+            let monologue = response.content.unwrap_or_default();
+
+            // Append as InnerMonologue event to thread
+            let event = build_event(
+                None,
+                EventType::InnerMonologue,
+                Role::System,
+                Some(Value::String(monologue.clone())),
+                Some("deep_think".to_string()),
+                None,
+                None,
+                Some(reason.to_string()),
+            );
+            append_event(thread_path, event)?;
+
+            Ok(json!({ "status": "ok", "length": monologue.len() }))
+        }
         _ => Err(anyhow!("unknown tool: {name}")),
     }
 }
@@ -600,6 +712,7 @@ fn parse_event_type(value: &str) -> Result<EventType> {
         "tool_result" => Ok(EventType::ToolResult),
         "system_note" => Ok(EventType::SystemNote),
         "attachment_added" => Ok(EventType::AttachmentAdded),
+        "inner_monologue" => Ok(EventType::InnerMonologue),
         _ => Err(anyhow!("invalid event_type: {value}")),
     }
 }

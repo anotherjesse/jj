@@ -50,6 +50,13 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         init_vault(&vault)?;
     }
 
+    let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
+    let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
+    let model = options
+        .model
+        .or_else(|| env::var("OPENAI_MODEL").ok())
+        .unwrap_or_else(|| "gpt-5-mini-2025-08-07".to_string());
+
     let thread_path = match options.thread {
         Some(path) => {
             if !path.exists() {
@@ -60,7 +67,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         None => create_thread(&vault, None, None, Some(ThreadMeta {
             kind: "chat".into(),
             agent: Some("jj".into()),
-            model: None,
+            model: Some(model.clone()),
         }))?,
     };
 
@@ -70,13 +77,6 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
     if options.history > 0 {
         load_history(&thread_path, options.history, &mut messages)?;
     }
-
-    let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
-    let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let model = options
-        .model
-        .or_else(|| env::var("OPENAI_MODEL").ok())
-        .unwrap_or_else(|| "gpt-5.2-2025-12-11".to_string());
 
     let mut client = OpenAIClient::new(api_key, base_url, model.clone());
     let tools = tool_schemas();
@@ -188,9 +188,29 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
                                             println!("{content}");
                                         }
                                     }
+                                    "tool_call_start" => {
+                                        if let Some(payload) = val.get("payload") {
+                                            let name = payload.get("tool_name").and_then(|n| n.as_str()).unwrap_or("?");
+                                            // Show a summary of key arguments (e.g. query for search, doc_path for read)
+                                            let detail = payload.get("arguments").and_then(|args| {
+                                                args.get("query").and_then(|v| v.as_str()).map(|s| s.to_string())
+                                                    .or_else(|| args.get("doc_path").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                                    .or_else(|| args.get("prompt").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                                    .or_else(|| args.get("source").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                            });
+                                            match detail {
+                                                Some(d) => eprintln!("[{name}: {d}]"),
+                                                None => eprintln!("[{name}]"),
+                                            }
+                                        }
+                                    }
+                                    "tool_call_result" => {
+                                        // Silently consumed — clients can show as expandable detail
+                                    }
                                     "tool_activity" => {
+                                        // Legacy compat
                                         if let Some(name) = val.get("payload").and_then(|p| p.get("tool_name")).and_then(|n| n.as_str()) {
-                                            eprintln!("[tool: {name}]");
+                                            eprintln!("[{name}]");
                                         }
                                     }
                                     "error" => {
@@ -484,6 +504,9 @@ fn load_history(thread_path: &Path, history: usize, messages: &mut Vec<Value>) -
                     }
                     EventType::AssistantMessage => {
                         messages.push(json!({"role":"assistant","content": content}));
+                    }
+                    EventType::InnerMonologue => {
+                        messages.push(json!({"role":"system","content": format!("[inner thoughts — not spoken aloud]\n{content}")}));
                     }
                     _ => {}
                 }

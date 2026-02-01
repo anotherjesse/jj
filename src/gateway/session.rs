@@ -94,7 +94,9 @@ impl SessionManager {
             }
         }
 
-        // Create new session
+        // Create new session — resolve model so it's recorded in the thread header
+        let model = std::env::var("OPENAI_MODEL")
+            .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
         let thread_path = create_thread(
             &self.vault_path,
             None,
@@ -102,7 +104,7 @@ impl SessionManager {
             Some(ThreadMeta {
                 kind: "chat".into(),
                 agent: Some("jj".into()),
-                model: None,
+                model: Some(model),
             }),
         )?;
         let thread_id = thread_path
@@ -272,11 +274,17 @@ impl SessionManager {
                     Ok(event) => {
                         use crate::agent::AgentEvent;
                         let ws_event = match event {
-                            AgentEvent::ToolActivity { tool_name } => json!({
+                            AgentEvent::ToolCallStart { tool_name, arguments } => json!({
                                 "type": "event",
-                                "event": "tool_activity",
+                                "event": "tool_call_start",
                                 "session_id": sk,
-                                "payload": { "tool_name": tool_name }
+                                "payload": { "tool_name": tool_name, "arguments": arguments }
+                            }),
+                            AgentEvent::ToolCallResult { tool_name, result } => json!({
+                                "type": "event",
+                                "event": "tool_call_result",
+                                "session_id": sk,
+                                "payload": { "tool_name": tool_name, "result": result }
                             }),
                             AgentEvent::FinalContent { content } => json!({
                                 "type": "event",
@@ -372,7 +380,7 @@ fn run_agent_blocking(
     let base_url = std::env::var("OPENAI_BASE_URL")
         .unwrap_or_else(|_| "https://api.openai.com".to_string());
     let model = std::env::var("OPENAI_MODEL")
-        .unwrap_or_else(|_| "gpt-5.2-2025-12-11".to_string());
+        .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
 
     let client = OpenAIClient::new(api_key, base_url, model);
 
@@ -396,6 +404,9 @@ fn run_agent_blocking(
                     }
                     EventType::AssistantMessage => {
                         messages.push(json!({"role": "assistant", "content": content}));
+                    }
+                    EventType::InnerMonologue => {
+                        messages.push(json!({"role": "system", "content": format!("[inner thoughts — not spoken aloud]\n{content}")}));
                     }
                     _ => {}
                 }
