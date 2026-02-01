@@ -1,8 +1,11 @@
 mod agent;
+mod anthropic;
 mod audit;
 mod embedding_index;
 mod embeddings;
+mod engine;
 mod gateway;
+mod gemini_chat;
 mod git_utils;
 mod ingest;
 mod knowledge;
@@ -14,7 +17,6 @@ mod vault;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde_json::Value;
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -454,16 +456,13 @@ async fn main() -> Result<()> {
         }
         Commands::BackfillSummaries { vault, model, dry_run } => {
             use crate::knowledge::read_doc;
-            use crate::openai::OpenAIClient;
 
             dotenvy::dotenv().ok();
             let vault = resolve_vault(vault);
-            let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
-            let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
-            let model = model
-                .or_else(|| env::var("OPENAI_MODEL").ok())
-                .unwrap_or_else(|| "gpt-5-mini-2025-08-07".to_string());
-            let client = OpenAIClient::new(api_key, base_url, model);
+            let mut client = crate::engine::create_engine()?;
+            if let Some(ref model_override) = model {
+                client.set_model(model_override.clone());
+            }
 
             let root = vault.join("knowledge");
             let mut stack = vec![root.clone()];

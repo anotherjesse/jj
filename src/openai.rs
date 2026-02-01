@@ -3,18 +3,7 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
-pub struct ToolCall {
-    pub id: String,
-    pub name: String,
-    pub arguments: Value,
-}
-
-#[derive(Debug, Clone)]
-pub struct ChatResponse {
-    pub content: Option<String>,
-    pub tool_calls: Vec<ToolCall>,
-}
+use crate::engine::{ChatResponse, Engine, ToolCall};
 
 pub struct OpenAIClient {
     api_key: String,
@@ -36,12 +25,10 @@ impl OpenAIClient {
             model,
         }
     }
+}
 
-    pub fn set_model(&mut self, model: String) {
-        self.model = model;
-    }
-
-    pub fn chat(&self, messages: &[Value], tools: &[Value]) -> Result<ChatResponse> {
+impl Engine for OpenAIClient {
+    fn chat(&self, messages: &[Value], tools: &[Value]) -> Result<ChatResponse> {
         let url = format!("{}/v1/chat/completions", self.base_url.trim_end_matches('/'));
         let body = json!({
             "model": self.model,
@@ -76,6 +63,14 @@ impl OpenAIClient {
         let tool_calls = parse_tool_calls(message)?;
 
         Ok(ChatResponse { content, tool_calls })
+    }
+
+    fn set_model(&mut self, model: String) {
+        self.model = model;
+    }
+
+    fn model(&self) -> &str {
+        &self.model
     }
 }
 

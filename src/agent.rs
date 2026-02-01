@@ -11,7 +11,7 @@ use crate::embedding_index::{build_knowledge_index, search_knowledge_index};
 use crate::embeddings::EmbeddingClient;
 use crate::git_utils::git_commit;
 use crate::knowledge::{apply_patch, read_doc, KnowledgePatch};
-use crate::openai::{ChatResponse, OpenAIClient};
+use crate::engine::{ChatResponse, Engine};
 use crate::thread_store::{
     append_event, build_event, create_thread, read_thread, EventType, Role,
 };
@@ -52,7 +52,7 @@ pub struct AgentConfig {
 pub fn run_agent_loop(
     config: &AgentConfig,
     initial_messages: Vec<Value>,
-    client: &OpenAIClient,
+    client: &dyn Engine,
 ) -> Result<Vec<Value>> {
     let all_tools = tool_schemas();
     let tools: Vec<Value> = match &config.tool_filter {
@@ -834,16 +834,22 @@ fn deep_think_background(
         deep_messages.push(json!({"role": "user", "content": "Reflect on the overall conversation. What patterns do you see? What should I consider next?"}));
     }
 
-    // 3. Create client with deep think model
-    let api_key = std::env::var("OPENAI_API_KEY")
-        .map_err(|_| anyhow!("OPENAI_API_KEY not set"))?;
-    let base_url = std::env::var("OPENAI_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let deep_model = std::env::var("OPENAI_DEEP_THINK_MODEL")
-        .or_else(|_| std::env::var("OPENAI_MODEL"))
-        .unwrap_or_else(|_| "gpt-5.2-2025-12-11".to_string());
-
-    let client = OpenAIClient::new(api_key, base_url, deep_model);
+    // 3. Create engine for deep think — uses DEEP_THINK_ENGINE if set, else main engine
+    let mut client = if let Ok(dt_engine) = std::env::var("DEEP_THINK_ENGINE") {
+        let kind = match dt_engine.as_str() {
+            "openai" => crate::engine::EngineKind::OpenAI,
+            "anthropic" => crate::engine::EngineKind::Anthropic,
+            "gemini" => crate::engine::EngineKind::Gemini,
+            other => return Err(anyhow!("invalid DEEP_THINK_ENGINE={other}")),
+        };
+        crate::engine::create_engine_of_kind(kind)?
+    } else {
+        crate::engine::create_engine()?
+    };
+    // Override model if OPENAI_DEEP_THINK_MODEL is set (backward compat)
+    if let Ok(deep_model) = std::env::var("OPENAI_DEEP_THINK_MODEL") {
+        client.set_model(deep_model);
+    }
 
     // 4. Run agent loop with tool filter for knowledge tools, max 3 turns
     let inner_config = AgentConfig {
@@ -859,7 +865,7 @@ fn deep_think_background(
         deep_think_running: Arc::new(AtomicBool::new(false)),
     };
 
-    let final_messages = run_agent_loop(&inner_config, deep_messages, &client)?;
+    let final_messages = run_agent_loop(&inner_config, deep_messages, client.as_ref())?;
 
     // 5. Extract final content from returned messages
     let monologue = final_messages

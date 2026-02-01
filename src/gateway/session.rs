@@ -143,7 +143,8 @@ impl SessionManager {
         }
 
         // Create new session — resolve model so it's recorded in the thread header
-        let model = std::env::var("OPENAI_MODEL")
+        let model = std::env::var("LLM_MODEL")
+            .or_else(|_| std::env::var("OPENAI_MODEL"))
             .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
         let thread_path = create_thread(
             &self.vault_path,
@@ -492,16 +493,8 @@ impl SessionManager {
 
 /// Generate a title by calling a cheap LLM model.
 fn generate_title_blocking(first_message: &str) -> Result<String> {
-    use crate::openai::OpenAIClient;
-
     dotenvy::dotenv().ok();
-    let api_key = std::env::var("OPENAI_API_KEY").context("OPENAI_API_KEY not set")?;
-    let base_url = std::env::var("OPENAI_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let model = std::env::var("OPENAI_MODEL")
-        .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
-
-    let client = OpenAIClient::new(api_key, base_url, model);
+    let client = crate::engine::create_engine()?;
     let messages = vec![
         json!({"role": "system", "content": "Generate a concise title (max 8 words) for this conversation. Return only the title, nothing else."}),
         json!({"role": "user", "content": first_message}),
@@ -554,17 +547,10 @@ fn run_agent_blocking(
 ) -> Result<String> {
     use crate::agent::{run_agent_loop, AgentConfig};
     use crate::chat::load_system_prompt;
-    use crate::openai::OpenAIClient;
 
     dotenvy::dotenv().ok();
 
-    let api_key = std::env::var("OPENAI_API_KEY").context("OPENAI_API_KEY not set")?;
-    let base_url = std::env::var("OPENAI_BASE_URL")
-        .unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let model = std::env::var("OPENAI_MODEL")
-        .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
-
-    let client = OpenAIClient::new(api_key, base_url, model);
+    let client = crate::engine::create_engine()?;
 
     let system_prompt = load_system_prompt(vault_path)?;
     let mut messages = vec![json!({"role": "system", "content": system_prompt})];
@@ -606,7 +592,7 @@ fn run_agent_blocking(
         deep_think_running,
     };
 
-    let final_messages = run_agent_loop(&config, messages, &client)?;
+    let final_messages = run_agent_loop(&config, messages, client.as_ref())?;
 
     // Extract the last assistant message as the final content
     let final_content = final_messages

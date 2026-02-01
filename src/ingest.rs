@@ -3,7 +3,6 @@ use chrono::{Datelike, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
@@ -14,7 +13,6 @@ use crate::agent::{run_agent_loop, AgentConfig};
 use crate::embedding_index::build_knowledge_index;
 use crate::embeddings::EmbeddingClient;
 use crate::git_utils::git_commit;
-use crate::openai::OpenAIClient;
 use crate::thread_store::{create_thread, ThreadMeta};
 use crate::vault::resolve_vault;
 
@@ -117,14 +115,11 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
     // Load ingestion system prompt
     let system_prompt = load_ingest_prompt(&vault, &slug, &source_id)?;
 
-    // Set up LLM client
-    let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
-    let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let model = options
-        .model
-        .or_else(|| env::var("OPENAI_MODEL").ok())
-        .unwrap_or_else(|| "gpt-5.2-2025-12-11".to_string());
-    let client = OpenAIClient::new(api_key, base_url, model);
+    // Set up LLM engine
+    let mut client = crate::engine::create_engine()?;
+    if let Some(ref model_override) = options.model {
+        client.set_model(model_override.clone());
+    }
 
     // Build initial messages: system prompt + document content as user message
     let initial_messages = vec![
@@ -154,7 +149,7 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
     let proposals_before = count_proposals(&vault);
 
     println!("Running ingestion agent...");
-    let _final_messages = run_agent_loop(&config, initial_messages, &client)?;
+    let _final_messages = run_agent_loop(&config, initial_messages, client.as_ref())?;
 
     // Update processing status to complete
     update_processing_status(&source_path, "complete")?;

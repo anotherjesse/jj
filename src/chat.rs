@@ -5,7 +5,6 @@ use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -16,7 +15,7 @@ use crate::audit::LedgerEntry;
 use crate::knowledge::read_doc;
 
 use crate::agent::{run_agent_loop, tool_schemas, with_datetime, AgentConfig};
-use crate::openai::OpenAIClient;
+use crate::engine::Engine;
 use crate::thread_store::{
     append_event, build_event, create_thread, read_thread, EventType, Role, ThreadEvent, ThreadMeta,
 };
@@ -52,12 +51,12 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         init_vault(&vault)?;
     }
 
-    let api_key = env::var("OPENAI_API_KEY").context("OPENAI_API_KEY is not set")?;
-    let base_url = env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com".to_string());
-    let model = options
-        .model
-        .or_else(|| env::var("OPENAI_MODEL").ok())
-        .unwrap_or_else(|| "gpt-5-mini-2025-08-07".to_string());
+    let mut engine = crate::engine::create_engine()?;
+    // CLI --model flag overrides engine default
+    if let Some(ref model_override) = options.model {
+        engine.set_model(model_override.clone());
+    }
+    let model = engine.model().to_string();
 
     let thread_path = match options.thread {
         Some(path) => {
@@ -80,7 +79,6 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         load_history(&thread_path, options.history, &mut messages)?;
     }
 
-    let mut client = OpenAIClient::new(api_key, base_url, model.clone());
     let tools = tool_schemas();
 
     println!("J REPL ready. Thread: {}", thread_path.display());
@@ -102,7 +100,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         }
         rl.add_history_entry(input)?;
         if input.starts_with('/') {
-            if !handle_command(input, &mut client, &thread_path, &vault, &tools)? {
+            if !handle_command(input, engine.as_mut(), &thread_path, &vault, &tools)? {
                 break;
             }
             continue;
@@ -131,7 +129,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
             event_sink: None,
             deep_think_running: deep_think_flag.clone(),
         };
-        messages = run_agent_loop(&config, messages, &client)?;
+        messages = run_agent_loop(&config, messages, engine.as_ref())?;
     }
 
     Ok(())
@@ -327,7 +325,7 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
 
 fn handle_command(
     input: &str,
-    client: &mut OpenAIClient,
+    client: &mut dyn Engine,
     thread_path: &Path,
     vault: &Path,
     tools: &[Value],
