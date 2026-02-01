@@ -51,7 +51,6 @@ pub struct ThreadEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadHeader {
-    #[serde(alias = "jj_thread")]
     pub j_thread: bool,
     pub thread_id: String,
     pub kind: String,
