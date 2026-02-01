@@ -63,9 +63,8 @@ pub fn run_agent_loop(
                 None,
                 None,
             );
-            let assistant_content = with_datetime(event.ts, &content);
             append_event(&config.thread_path, event)?;
-            messages.push(json!({"role": "assistant", "content": assistant_content}));
+            messages.push(json!({"role": "assistant", "content": content}));
             break;
         }
 
@@ -133,11 +132,11 @@ pub fn run_agent_loop(
 }
 
 pub fn with_datetime(ts: DateTime<Utc>, content: &str) -> String {
-    let local = ts.with_timezone(&Local).to_rfc3339();
+    let local = ts.with_timezone(&Local).format("%Y-%m-%dT%H:%M:%S");
     if content.is_empty() {
-        format!("[datetime]: {local}")
+        format!("[{local}]")
     } else {
-        format!("[datetime]: {local}\n{content}")
+        format!("[{local}] {content}")
     }
 }
 

@@ -462,7 +462,6 @@ fn load_history(thread_path: &Path, history: usize, messages: &mut Vec<Value>) -
                         messages.push(json!({"role":"user","content": content}));
                     }
                     EventType::AssistantMessage => {
-                        let content = with_datetime(event.ts, &content);
                         messages.push(json!({"role":"assistant","content": content}));
                     }
                     _ => {}

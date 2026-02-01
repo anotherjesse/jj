@@ -40,8 +40,18 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn index_html() -> axum::response::Html<&'static str> {
-    axum::response::Html(include_str!("../../web/index.html"))
+async fn index_html(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Response {
+    match params.get("token") {
+        Some(t) if t == state.token.as_str() => {
+            axum::response::Html(include_str!("../../web/index.html")).into_response()
+        }
+        _ => {
+            (StatusCode::UNAUTHORIZED, "Unauthorized. Add ?token=<bearer> to URL.").into_response()
+        }
+    }
 }
 
 async fn health() -> &'static str {
@@ -56,8 +66,9 @@ async fn ws_handler(
     // Validate Origin header for browser connections
     if let Some(origin) = headers.get("origin").and_then(|v| v.to_str().ok()) {
         let port = super::resolve_port();
-        let allowed = format!("http://127.0.0.1:{port}");
-        if origin != allowed && origin != "null" {
+        let allowed_ip = format!("http://127.0.0.1:{port}");
+        let allowed_localhost = format!("http://localhost:{port}");
+        if origin != allowed_ip && origin != allowed_localhost && origin != "null" {
             warn!(origin, "rejected WebSocket connection: invalid origin");
             return StatusCode::FORBIDDEN.into_response();
         }

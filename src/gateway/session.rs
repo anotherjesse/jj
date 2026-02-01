@@ -365,7 +365,6 @@ fn run_agent_blocking(
                         messages.push(json!({"role": "user", "content": content}));
                     }
                     EventType::AssistantMessage => {
-                        let content = crate::agent::with_datetime(event.ts, &content);
                         messages.push(json!({"role": "assistant", "content": content}));
                     }
                     _ => {}

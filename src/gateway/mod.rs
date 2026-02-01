@@ -136,12 +136,12 @@ pub async fn run_daemon() -> Result<()> {
         std::env::var("JJ_VAULT").ok().map(std::path::PathBuf::from),
     );
     let sessions = session::SessionManager::new(vault_path)?;
-    let state = ws::AppState::new(token, sessions);
+    let state = ws::AppState::new(token.clone(), sessions);
 
     let app = ws::router(state);
 
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
-    info!("listening on 127.0.0.1:{port}");
+    info!("serving at http://localhost:{port}/?token={token}");
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
