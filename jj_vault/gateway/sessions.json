@@ -1,9 +1,75 @@
 [
   {
+    "session_key": "session-1769925399959",
+    "thread_id": "thr_01KGBWCNCREDM3XMXQ692G0ZBK",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBWCNCREDM3XMXQ692G0ZBK.jsonl",
+    "created_at": "2026-02-01T05:56:39.962490+00:00"
+  },
+  {
+    "session_key": "session-1769927325934",
+    "thread_id": "thr_01KGBY7E7FH36HTW27SCYWM6PM",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBY7E7FH36HTW27SCYWM6PM.jsonl",
+    "created_at": "2026-02-01T06:28:45.937287+00:00"
+  },
+  {
+    "session_key": "session-1769930789753",
+    "thread_id": "thr_01KGC1H4VWPCVVTD5VYN6HVDZ9",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGC1H4VWPCVVTD5VYN6HVDZ9.jsonl",
+    "created_at": "2026-02-01T07:26:29.758014+00:00"
+  },
+  {
+    "session_key": "session-1769929099718",
+    "thread_id": "thr_01KGBZXJE8BV3K81SN3NMBZVNZ",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBZXJE8BV3K81SN3NMBZVNZ.jsonl",
+    "created_at": "2026-02-01T06:58:19.721321+00:00"
+  },
+  {
+    "session_key": "session-1769928712854",
+    "thread_id": "thr_01KGBZHRMZXPKRQB00BVYP6BXS",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBZHRMZXPKRQB00BVYP6BXS.jsonl",
+    "created_at": "2026-02-01T06:51:52.864161+00:00"
+  },
+  {
+    "session_key": "session-1769927802140",
+    "thread_id": "thr_01KGBYNZ8X1CQJ2BC26PJM9SVZ",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBYNZ8X1CQJ2BC26PJM9SVZ.jsonl",
+    "created_at": "2026-02-01T06:36:42.143055+00:00"
+  },
+  {
+    "session_key": "session-1769928166890",
+    "thread_id": "thr_01KGBZ13FAS5G8WDBJ4PHR1YDD",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBZ13FAS5G8WDBJ4PHR1YDD.jsonl",
+    "created_at": "2026-02-01T06:42:46.891152+00:00"
+  },
+  {
+    "session_key": "session-1769926466548",
+    "thread_id": "thr_01KGBXD6ZPSEZ8SSYB2XB48MS5",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBXD6ZPSEZ8SSYB2XB48MS5.jsonl",
+    "created_at": "2026-02-01T06:14:26.552228+00:00"
+  },
+  {
     "session_key": "main",
     "thread_id": "thr_01KGBTN7FCWH6D1PQT1QS2QMPS",
     "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBTN7FCWH6D1PQT1QS2QMPS.jsonl",
     "created_at": "2026-02-01T05:26:23.469619+00:00"
+  },
+  {
+    "session_key": "session-1769929061799",
+    "thread_id": "thr_01KGBZWDD9K9FAHTQVPHCZG8RN",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBZWDD9K9FAHTQVPHCZG8RN.jsonl",
+    "created_at": "2026-02-01T06:57:41.803894+00:00"
+  },
+  {
+    "session_key": "session-1769927010553",
+    "thread_id": "thr_01KGBXXT7SBDQK50C0Y3S00MF9",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBXXT7SBDQK50C0Y3S00MF9.jsonl",
+    "created_at": "2026-02-01T06:23:30.554471+00:00"
+  },
+  {
+    "session_key": "session-1769927244418",
+    "thread_id": "thr_01KGBY4YM3B0Z6TAFX56AWHFMW",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBY4YM3B0Z6TAFX56AWHFMW.jsonl",
+    "created_at": "2026-02-01T06:27:24.420444+00:00"
   },
   {
     "session_key": "session-1769911507924",

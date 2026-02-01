@@ -19,7 +19,8 @@ Common commands:
 - `scripts/smoke_openai.sh`
 
 Defaults:
-- OpenAI model defaults to `gpt-5.2-2025-12-11` unless `OPENAI_MODEL` is set.
+- Main agent model defaults to `gpt-5-mini-2025-08-07` unless `OPENAI_MODEL` is set.
+- Deep think model defaults to `gpt-5.2-2025-12-11` unless `OPENAI_DEEP_THINK_MODEL` is set.
 
 Using `just` (if installed):
 - `just verify`

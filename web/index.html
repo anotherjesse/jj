@@ -153,6 +153,27 @@ function handleEvent(msg) {
     case 'final':
       finalizeDelta(payload.content || '');
       break;
+    case 'tool_call_start': {
+      const name = payload.tool_name || 'tool';
+      const args = payload.arguments || {};
+      const detail = args.query || args.doc_path || args.prompt || args.source || '';
+      const short = detail.length > 80 ? detail.slice(0, 80) + '…' : detail;
+      addMessage('tool', short ? `[${name}: ${short}]` : `[${name}]`);
+      break;
+    }
+    case 'tool_call_result': {
+      const toolName = payload.tool_name || '';
+      const result = payload.result || {};
+      const data = result.data || {};
+      if ((toolName === 'generate_image' || toolName === 'draw') && result.status === 'ok') {
+        const imgPath = data.path || data.drawn || '';
+        if (imgPath) {
+          const src = imgPath.startsWith('media/') ? '/' + imgPath : imgPath;
+          addImage(src);
+        }
+      }
+      break;
+    }
     case 'tool_activity':
       addMessage('tool', `[${payload.tool_name || 'tool'}]`);
       break;
@@ -169,6 +190,20 @@ function addMessage(role, text) {
   bubble.className = 'bubble';
   bubble.textContent = text;
   div.appendChild(bubble);
+  $('#messages').appendChild(div);
+  $('#messages').scrollTop = $('#messages').scrollHeight;
+}
+
+function addImage(src) {
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.maxWidth = '100%';
+  img.style.borderRadius = '8px';
+  img.style.maxHeight = '400px';
+  img.onerror = () => { img.alt = 'Image failed to load: ' + src; };
+  div.appendChild(img);
   $('#messages').appendChild(div);
   $('#messages').scrollTop = $('#messages').scrollHeight;
 }

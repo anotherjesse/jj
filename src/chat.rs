@@ -9,6 +9,8 @@ use std::env;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 use crate::audit::LedgerEntry;
 use crate::knowledge::read_doc;
@@ -84,6 +86,8 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
     println!("JJ REPL ready. Thread: {}", thread_path.display());
     println!("Model: {model}. Type /help for commands.");
 
+    let deep_think_flag = Arc::new(AtomicBool::new(false));
+
     let mut rl = DefaultEditor::new()?;
     loop {
         let line = match rl.readline("jj> ") {
@@ -125,6 +129,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
             allow_commit: options.allow_commit,
             tool_filter: None,
             event_sink: None,
+            deep_think_running: deep_think_flag.clone(),
         };
         messages = run_agent_loop(&config, messages, &client)?;
     }

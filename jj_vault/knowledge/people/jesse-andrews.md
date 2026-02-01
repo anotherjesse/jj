@@ -11,9 +11,9 @@ tags:
 - sparks
 - rust
 - cloud
-confidence: 0.8
+confidence: 0.9
 created_at: 2026-01-31T18:03:27.397560Z
-updated_at: 2026-01-31T20:48:29.544082Z
+updated_at: 2026-02-01T06:29:39.018712Z
 sources:
 - thread_id: ''
   event_ids:
@@ -25,7 +25,7 @@ sources:
   event_ids:
   - src_01KGAMF16BHX3QRAJSV7DV8F6K
 supersedes: []
-summary: Jesse Andrews, CTO at LoopWork in Berkeley; ex-NASA OpenStack builder, Planet.com SVP Eng, GitHub @anotherjesse, deep AI (2018–21).
+summary: Jesse Andrews
 ---
 ## Role
 - CTO at LoopWork
@@ -61,3 +61,12 @@ These items are beliefs/framings associated with Jesse in the Sparks design doc;
 
 ## Update (2026-01-31)
 - **tmux sizing in SSH/tmux: resolved** (completed a couple days prior to 2026-01-31). Previously a top operational blocker.
+
+
+Family
+
+- Daughter: Ada — birthday: Feb 15 (added 2026-01-31 per user message)
+
+
+## Update (2026-02-01)
+- Added Ada's birth year: 2013 per user message (original birthday Feb 15 added 2026-01-31). Daughter: Ada — birthday: Feb 15, 2013.

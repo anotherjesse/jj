@@ -1,7 +1,7 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
+        Path as AxumPath, State,
     },
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -36,6 +36,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/ws", any(ws_handler))
         .route("/health", get(health))
+        .route("/media/{*path}", get(serve_media))
         .route("/", get(index_html))
         .with_state(state)
 }
@@ -51,6 +52,46 @@ async fn index_html(
         _ => {
             (StatusCode::UNAUTHORIZED, "Unauthorized. Add ?token=<bearer> to URL.").into_response()
         }
+    }
+}
+
+async fn serve_media(
+    State(state): State<AppState>,
+    AxumPath(path): AxumPath<String>,
+) -> Response {
+    // Reject path traversal
+    if path.contains("..") || path.starts_with('/') || path.contains('\\') {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
+    let vault_path = state.sessions.vault_path();
+    let file_path = vault_path.join("media").join(&path);
+
+    // Verify resolved path is within media/
+    let media_dir = vault_path.join("media");
+    if let (Ok(canonical_file), Ok(canonical_media)) =
+        (file_path.canonicalize(), media_dir.canonicalize())
+    {
+        if !canonical_file.starts_with(&canonical_media) {
+            return StatusCode::FORBIDDEN.into_response();
+        }
+    }
+
+    match tokio::fs::read(&file_path).await {
+        Ok(bytes) => {
+            let content_type = if path.ends_with(".png") {
+                "image/png"
+            } else if path.ends_with(".jpg") || path.ends_with(".jpeg") {
+                "image/jpeg"
+            } else if path.ends_with(".gif") {
+                "image/gif"
+            } else if path.ends_with(".webp") {
+                "image/webp"
+            } else {
+                "application/octet-stream"
+            };
+            ([(axum::http::header::CONTENT_TYPE, content_type)], bytes).into_response()
+        }
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
 

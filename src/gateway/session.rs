@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex, RwLock, Semaphore};
 use tracing::{info, warn};
@@ -29,6 +30,8 @@ struct SessionState {
     run_semaphore: Arc<Semaphore>,
     /// All subscribed clients for this session.
     subscribers: Mutex<Vec<mpsc::UnboundedSender<Value>>>,
+    /// Flag indicating whether a deep_think background task is running.
+    deep_think_running: Arc<AtomicBool>,
 }
 
 /// Manages all sessions, backed by sessions.json in the vault.
@@ -60,6 +63,7 @@ impl SessionManager {
                         entry,
                         run_semaphore: Arc::new(Semaphore::new(1)),
                         subscribers: Mutex::new(Vec::new()),
+                        deep_think_running: Arc::new(AtomicBool::new(false)),
                     }),
                 );
             }
@@ -125,6 +129,7 @@ impl SessionManager {
             entry: entry.clone(),
             run_semaphore: Arc::new(Semaphore::new(1)),
             subscribers: Mutex::new(vec![tx]),
+            deep_think_running: Arc::new(AtomicBool::new(false)),
         });
 
         {
@@ -292,6 +297,12 @@ impl SessionManager {
                                 "session_id": sk,
                                 "payload": { "content": content }
                             }),
+                            AgentEvent::DeepThinkComplete { monologue } => json!({
+                                "type": "event",
+                                "event": "deep_think_complete",
+                                "session_id": sk,
+                                "payload": { "length": monologue.len() }
+                            }),
                         };
                         broadcast_to(&subs_clone, &ws_event);
                     }
@@ -304,8 +315,9 @@ impl SessionManager {
         });
 
         // Run the sync agent loop in a blocking thread
+        let deep_think_flag_clone = Arc::clone(&state.deep_think_running);
         let result = tokio::task::spawn_blocking(move || {
-            run_agent_blocking(&vault_path, &thread_path, &session_key_owned, event_tx)
+            run_agent_blocking(&vault_path, &thread_path, &session_key_owned, event_tx, deep_think_flag_clone)
         })
         .await
         .context("agent task panicked")?;
@@ -369,6 +381,7 @@ fn run_agent_blocking(
     thread_path: &Path,
     _session_key: &str,
     event_sink: std::sync::mpsc::Sender<crate::agent::AgentEvent>,
+    deep_think_running: Arc<AtomicBool>,
 ) -> Result<String> {
     use crate::agent::{run_agent_loop, AgentConfig};
     use crate::chat::load_system_prompt;
@@ -421,6 +434,7 @@ fn run_agent_blocking(
         allow_commit: false,
         tool_filter: None,
         event_sink: Some(event_sink),
+        deep_think_running,
     };
 
     let final_messages = run_agent_loop(&config, messages, &client)?;

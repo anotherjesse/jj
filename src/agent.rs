@@ -3,6 +3,8 @@ use chrono::{DateTime, Local, Utc};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use crate::audit::append_ledger;
 use crate::embedding_index::{build_knowledge_index, search_knowledge_index};
@@ -30,6 +32,8 @@ pub enum AgentEvent {
     },
     /// Final assistant message content
     FinalContent { content: String },
+    /// Deep think background task completed
+    DeepThinkComplete { monologue: String },
 }
 
 pub struct AgentConfig {
@@ -41,6 +45,8 @@ pub struct AgentConfig {
     pub tool_filter: Option<Vec<String>>,
     /// Optional channel for streaming events to gateway clients.
     pub event_sink: Option<std::sync::mpsc::Sender<AgentEvent>>,
+    /// Flag indicating whether a deep_think background task is running.
+    pub deep_think_running: Arc<AtomicBool>,
 }
 
 pub fn run_agent_loop(
@@ -99,6 +105,15 @@ pub fn run_agent_loop(
                     tool_name: call.name.clone(),
                     arguments: call.arguments.clone(),
                 });
+            } else {
+                // Debug: show tool calls in direct/CLI mode
+                let detail = call.arguments.get("query").and_then(|v| v.as_str())
+                    .or_else(|| call.arguments.get("doc_path").and_then(|v| v.as_str()))
+                    .or_else(|| call.arguments.get("prompt").and_then(|v| v.as_str()).map(|s| &s[..s.len().min(80)]));
+                match detail {
+                    Some(d) => eprintln!("[{}: {}]", call.name, d),
+                    None => eprintln!("[{}]", call.name),
+                }
             }
             let reason = call
                 .arguments
@@ -122,9 +137,7 @@ pub fn run_agent_loop(
             let result = execute_tool(
                 &call.name,
                 &call.arguments,
-                &config.vault_path,
-                &config.thread_path,
-                config.allow_commit,
+                config,
             );
             let result_value = match result {
                 Ok(data) => json!({"status": "ok", "data": data}),
@@ -365,6 +378,22 @@ pub fn tool_schemas() -> Vec<Value> {
         json!({
             "type": "function",
             "function": {
+                "name": "generate_image",
+                "description": "Generate an image using flux2 and store it in the vault media directory. Path should use descriptive folders for uniqueness (e.g. 'diagrams/arch-v2.png', 'food/pepperoni-pizza.png'). Returns error if path already exists.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": { "type": "string", "description": "Text description of the image to generate." },
+                        "path": { "type": "string", "description": "Relative path within media/ (e.g. 'food/pizza.png'). Must end with .png. Intermediate directories are created automatically." },
+                        "reason": { "type": "string" }
+                    },
+                    "required": ["prompt", "path", "reason"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
                 "name": "deep_think",
                 "description": "Trigger deep thinking. Calls a slower model to reflect on the conversation, search knowledge, and produce inner monologue. The result is appended to the thread as internal context visible on your next turn. Use when the conversation would benefit from deeper analysis, pattern recognition, or knowledge retrieval. The inner monologue will NOT be shown to the user.",
                 "parameters": {
@@ -386,10 +415,11 @@ pub fn tool_schemas() -> Vec<Value> {
 fn execute_tool(
     name: &str,
     args: &Value,
-    vault: &Path,
-    thread_path: &Path,
-    allow_commit: bool,
+    config: &AgentConfig,
 ) -> Result<Value> {
+    let vault = &config.vault_path;
+    let thread_path = &config.thread_path;
+    let allow_commit = config.allow_commit;
     match name {
         "vault_init" => {
             let path = args
@@ -624,84 +654,237 @@ fn execute_tool(
                 "model": stats.model
             }))
         }
-        "deep_think" => {
-            let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
-            let reason = args
-                .get("reason")
+        "generate_image" => {
+            let prompt = args
+                .get("prompt")
                 .and_then(|v| v.as_str())
-                .unwrap_or("deep_think");
+                .ok_or_else(|| anyhow!("generate_image requires 'prompt'"))?;
+            let rel_path = args
+                .get("path")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("generate_image requires 'path'"))?;
 
-            // Read recent thread events for context
-            let lines = read_thread(thread_path, None, Some(50))?;
-            let mut transcript = String::new();
-            for line in &lines {
-                if let Ok(event) = serde_json::from_str::<crate::thread_store::ThreadEvent>(line) {
-                    let role_label = match event.role {
-                        Role::User => "User",
-                        Role::Assistant => "Assistant",
-                        Role::System => "System",
-                        Role::Tool => "Tool",
-                    };
-                    if let Some(content) = &event.content {
-                        let text = match content {
-                            Value::String(s) => s.clone(),
-                            other => other.to_string(),
-                        };
-                        if !text.is_empty() {
-                            transcript.push_str(&format!("{role_label}: {text}\n"));
-                        }
-                    }
+            // Validate path: no .., no leading /, no backslash, must end with .png
+            if rel_path.contains("..")
+                || rel_path.starts_with('/')
+                || rel_path.contains('\\')
+                || rel_path.contains('\0')
+                || !rel_path.ends_with(".png")
+            {
+                return Err(anyhow!(
+                    "invalid path: must be relative, no '..', and end with .png"
+                ));
+            }
+            // Additional check: only allow alphanumeric, dash, underscore, slash, dot
+            if !rel_path
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '/' | '.'))
+            {
+                return Err(anyhow!(
+                    "invalid path: only alphanumeric, dash, underscore, slash allowed"
+                ));
+            }
+
+            let media_dir = vault.join("media");
+            let full_path = media_dir.join(rel_path);
+
+            // Verify resolved path is within media/
+            if let Ok(canonical_parent) = full_path.parent().unwrap_or(&media_dir).canonicalize() {
+                let canonical_media = media_dir.canonicalize().unwrap_or_else(|_| media_dir.clone());
+                if !canonical_parent.starts_with(&canonical_media) {
+                    return Err(anyhow!("path escapes media directory"));
                 }
             }
 
-            // Build inner-voice messages
-            let system_msg = "You are the inner voice of an AI assistant named JJ. \
-                You are thinking privately — nothing you say will be shown to the user. \
-                Reflect on the conversation so far. Note patterns, form hypotheses, \
-                identify what you know vs don't know, and suggest what to explore or say next. \
-                Be concise but thorough. Write in first person as inner thoughts.";
-
-            let mut deep_messages = vec![json!({"role": "system", "content": system_msg})];
-            if !transcript.is_empty() {
-                deep_messages.push(json!({"role": "user", "content": format!("Here is the conversation so far:\n\n{transcript}")}));
-            }
-            if !prompt.is_empty() {
-                deep_messages.push(json!({"role": "user", "content": format!("Focus your thinking on: {prompt}")}));
-            } else {
-                deep_messages.push(json!({"role": "user", "content": "Reflect on the overall conversation. What patterns do you see? What should I consider next?"}));
+            // Check existence
+            if full_path.exists() {
+                return Err(anyhow!("exists: media/{rel_path}"));
             }
 
-            // Use a configurable model for deep thinking
-            let api_key = std::env::var("OPENAI_API_KEY")
-                .map_err(|_| anyhow!("OPENAI_API_KEY not set"))?;
-            let base_url = std::env::var("OPENAI_BASE_URL")
-                .unwrap_or_else(|_| "https://api.openai.com".to_string());
-            let deep_model = std::env::var("OPENAI_DEEP_THINK_MODEL")
-                .or_else(|_| std::env::var("OPENAI_MODEL"))
-                .unwrap_or_else(|_| "gpt-5.2-2025-12-11".to_string());
+            // Create parent directories
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
 
-            let client = OpenAIClient::new(api_key, base_url, deep_model);
-            let response = client.chat(&deep_messages, &[])?;
+            // Run flux2
+            let output = std::process::Command::new("flux2")
+                .arg(prompt)
+                .arg(&full_path)
+                .output();
 
-            let monologue = response.content.unwrap_or_default();
+            match output {
+                Ok(out) if out.status.success() => {
+                    if full_path.exists() {
+                        Ok(json!({ "path": format!("media/{rel_path}") }))
+                    } else {
+                        Err(anyhow!("flux2 completed but output file not found"))
+                    }
+                }
+                Ok(out) => {
+                    // Clean up partial file
+                    let _ = fs::remove_file(&full_path);
+                    let stderr = String::from_utf8_lossy(&out.stderr);
+                    Err(anyhow!("flux2 failed: {stderr}"))
+                }
+                Err(e) => {
+                    let _ = fs::remove_file(&full_path);
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        Err(anyhow!("flux2 not found"))
+                    } else {
+                        Err(anyhow!("flux2 error: {e}"))
+                    }
+                }
+            }
+        }
+        "deep_think" => {
+            let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let reason = args
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("deep_think")
+                .to_string();
 
-            // Append as InnerMonologue event to thread
-            let event = build_event(
-                None,
-                EventType::InnerMonologue,
-                Role::System,
-                Some(Value::String(monologue.clone())),
-                Some("deep_think".to_string()),
-                None,
-                None,
-                Some(reason.to_string()),
-            );
-            append_event(thread_path, event)?;
+            // Check if already running
+            if config.deep_think_running.compare_exchange(
+                false, true, Ordering::SeqCst, Ordering::SeqCst,
+            ).is_err() {
+                return Ok(json!({ "status": "already_running" }));
+            }
 
-            Ok(json!({ "status": "ok", "length": monologue.len() }))
+            let vault_path = vault.to_path_buf();
+            let thread_path = thread_path.to_path_buf();
+            let running = Arc::clone(&config.deep_think_running);
+            let event_sink = config.event_sink.clone();
+
+            std::thread::spawn(move || {
+                let result = deep_think_background(
+                    &vault_path,
+                    &thread_path,
+                    &prompt,
+                    &reason,
+                );
+                match result {
+                    Ok(monologue) => {
+                        if let Some(ref sink) = event_sink {
+                            let _ = sink.send(AgentEvent::DeepThinkComplete { monologue });
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("deep_think background error: {e}");
+                    }
+                }
+                running.store(false, Ordering::SeqCst);
+            });
+
+            Ok(json!({ "status": "queued" }))
         }
         _ => Err(anyhow!("unknown tool: {name}")),
     }
+}
+
+/// Run deep_think work in a background thread: read transcript, call slow model
+/// with knowledge tool access, append InnerMonologue to thread.
+fn deep_think_background(
+    vault_path: &Path,
+    thread_path: &Path,
+    prompt: &str,
+    reason: &str,
+) -> Result<String> {
+    // 1. Read recent thread events for context
+    let lines = read_thread(thread_path, None, Some(50))?;
+    let mut transcript = String::new();
+    for line in &lines {
+        if let Ok(event) = serde_json::from_str::<crate::thread_store::ThreadEvent>(line) {
+            let role_label = match event.role {
+                Role::User => "User",
+                Role::Assistant => "Assistant",
+                Role::System => "System",
+                Role::Tool => "Tool",
+            };
+            if let Some(content) = &event.content {
+                let text = match content {
+                    Value::String(s) => s.clone(),
+                    other => other.to_string(),
+                };
+                if !text.is_empty() {
+                    transcript.push_str(&format!("{role_label}: {text}\n"));
+                }
+            }
+        }
+    }
+
+    // 2. Build inner-voice system prompt
+    let system_msg = "You are the inner voice of an AI assistant named JJ. \
+        You are thinking privately — nothing you say will be shown to the user. \
+        Reflect on the conversation so far. Note patterns, form hypotheses, \
+        identify what you know vs don't know, and suggest what to explore or say next. \
+        You have access to knowledge_search and knowledge_read tools to look up information. \
+        Be concise but thorough. Write in first person as inner thoughts.";
+
+    let mut deep_messages = vec![json!({"role": "system", "content": system_msg})];
+    if !transcript.is_empty() {
+        deep_messages.push(json!({"role": "user", "content": format!("Here is the conversation so far:\n\n{transcript}")}));
+    }
+    if !prompt.is_empty() {
+        deep_messages.push(json!({"role": "user", "content": format!("Focus your thinking on: {prompt}")}));
+    } else {
+        deep_messages.push(json!({"role": "user", "content": "Reflect on the overall conversation. What patterns do you see? What should I consider next?"}));
+    }
+
+    // 3. Create client with deep think model
+    let api_key = std::env::var("OPENAI_API_KEY")
+        .map_err(|_| anyhow!("OPENAI_API_KEY not set"))?;
+    let base_url = std::env::var("OPENAI_BASE_URL")
+        .unwrap_or_else(|_| "https://api.openai.com".to_string());
+    let deep_model = std::env::var("OPENAI_DEEP_THINK_MODEL")
+        .or_else(|_| std::env::var("OPENAI_MODEL"))
+        .unwrap_or_else(|_| "gpt-5.2-2025-12-11".to_string());
+
+    let client = OpenAIClient::new(api_key, base_url, deep_model);
+
+    // 4. Run agent loop with tool filter for knowledge tools, max 3 turns
+    let inner_config = AgentConfig {
+        vault_path: vault_path.to_path_buf(),
+        thread_path: thread_path.to_path_buf(),
+        max_turns: 3,
+        allow_commit: false,
+        tool_filter: Some(vec![
+            "knowledge_search".into(),
+            "knowledge_read".into(),
+        ]),
+        event_sink: None,
+        deep_think_running: Arc::new(AtomicBool::new(false)),
+    };
+
+    let final_messages = run_agent_loop(&inner_config, deep_messages, &client)?;
+
+    // 5. Extract final content from returned messages
+    let monologue = final_messages
+        .iter()
+        .rev()
+        .find_map(|m| {
+            if m.get("role")?.as_str()? == "assistant" {
+                m.get("content")?.as_str().map(|s| s.to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    // 6. Append InnerMonologue event to thread
+    let event = build_event(
+        None,
+        EventType::InnerMonologue,
+        Role::System,
+        Some(Value::String(monologue.clone())),
+        Some("deep_think".to_string()),
+        None,
+        None,
+        Some(reason.to_string()),
+    );
+    append_event(thread_path, event)?;
+
+    Ok(monologue)
 }
 
 fn parse_event_type(value: &str) -> Result<EventType> {

@@ -6,6 +6,8 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use ulid::Ulid;
 
 use crate::agent::{run_agent_loop, AgentConfig};
@@ -145,6 +147,7 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
             "knowledge_search".into(),
         ]),
         event_sink: None,
+        deep_think_running: Arc::new(AtomicBool::new(false)),
     };
 
     // Snapshot proposal count before ingestion
