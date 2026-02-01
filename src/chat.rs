@@ -68,7 +68,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         }
         None => create_thread(&vault, None, None, Some(ThreadMeta {
             kind: "chat".into(),
-            agent: Some("jj".into()),
+            agent: Some("j".into()),
             model: Some(model.clone()),
         }))?,
     };
@@ -83,14 +83,14 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
     let mut client = OpenAIClient::new(api_key, base_url, model.clone());
     let tools = tool_schemas();
 
-    println!("JJ REPL ready. Thread: {}", thread_path.display());
+    println!("J REPL ready. Thread: {}", thread_path.display());
     println!("Model: {model}. Type /help for commands.");
 
     let deep_think_flag = Arc::new(AtomicBool::new(false));
 
     let mut rl = DefaultEditor::new()?;
     loop {
-        let line = match rl.readline("jj> ") {
+        let line = match rl.readline("j> ") {
             Ok(line) => line,
             Err(ReadlineError::Interrupted) => continue,
             Err(ReadlineError::Eof) => break,
@@ -167,7 +167,7 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
         .and_then(|v| v.as_str())
         .unwrap_or("?");
 
-    println!("JJ REPL (daemon). Session: {session_key}, Thread: {thread_id}");
+    println!("J REPL (daemon). Session: {session_key}, Thread: {thread_id}");
     println!("Type /help for commands.");
 
     // Spawn a background task to print incoming events
@@ -254,7 +254,7 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
     // REPL loop on the main thread (rustyline blocks)
     let mut rl = rustyline::DefaultEditor::new()?;
     loop {
-        let line = match rl.readline("jj> ") {
+        let line = match rl.readline("j> ") {
             Ok(line) => line,
             Err(rustyline::error::ReadlineError::Interrupted) => continue,
             Err(rustyline::error::ReadlineError::Eof) => break,
@@ -373,12 +373,12 @@ fn handle_command(
 }
 
 pub fn load_system_prompt(vault: &Path) -> Result<String> {
-    let path = vault.join("prompts/jj.system.md");
+    let path = vault.join("prompts/j.system.md");
     let base = if path.exists() {
         fs::read_to_string(&path)
             .with_context(|| format!("read system prompt {}", path.display()))?
     } else {
-        "You are JJ, a memory-first assistant.".to_string()
+        "You are J, a memory-first assistant.".to_string()
     };
 
     let toc = build_vault_toc(vault).unwrap_or_default();

@@ -10,7 +10,7 @@ cargo check "${BIN_ARGS[@]}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-VAULT_DIR="$TMP_DIR/jj_vault"
+VAULT_DIR="$TMP_DIR/j_vault"
 
 echo "==> init vault"
 cargo run "${BIN_ARGS[@]}" --quiet -- vault init --path "$VAULT_DIR"

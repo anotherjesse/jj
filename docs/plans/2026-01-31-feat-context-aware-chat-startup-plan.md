@@ -9,7 +9,7 @@ brainstorm: docs/brainstorms/2026-01-31-context-aware-startup-brainstorm.md
 
 ## Overview
 
-When `jay chat` starts, the agent currently wakes up with only a static 46-line system prompt and thread history — no awareness of what it knows or what changed recently. This feature injects two dynamic sections into the system prompt at startup:
+When `j chat` starts, the agent currently wakes up with only a static 46-line system prompt and thread history — no awareness of what it knows or what changed recently. This feature injects two dynamic sections into the system prompt at startup:
 
 1. **Vault TOC** — compact tree of all knowledge docs with one-line summaries
 2. **Last 24h mutation digest** — recent audit ledger entries with change descriptions
@@ -56,7 +56,7 @@ pub struct LedgerEntry {
 - Required on new mutations via `knowledge_apply`
 - Distinct from `reason` (intent) — this describes the actual change
 - Example reason: "Processing ingested CTO doc"
-- Example change_summary: "Created project doc for JJ Gateway with tech stack and architecture"
+- Example change_summary: "Created project doc for J Gateway with tech stack and architecture"
 
 **Update `knowledge_apply` tool schema** (`src/agent.rs:233-265`)
 
@@ -83,7 +83,7 @@ fn build_vault_toc(vault: &Path) -> Result<String>
 ## Your Knowledge
 
 ### projects/ (12 docs)
-- jj-gateway.md — Event-sourced CLI + Telegram gateway for JJ agent
+- j-gateway.md — Event-sourced CLI + Telegram gateway for J agent
 - openclaw.md — AI agent framework with local-first architecture
 - ...
 
@@ -119,7 +119,7 @@ fn build_mutation_digest(vault: &Path) -> Result<String>
 ```
 ## Recent Changes (last 24h)
 
-- [15:23] Created knowledge/projects/jj-gateway.md — Event-sourced CLI + Telegram gateway
+- [15:23] Created knowledge/projects/j-gateway.md — Event-sourced CLI + Telegram gateway
 - [14:01] Updated knowledge/system/priorities.md — Added Q1 infrastructure goals
 - [13:45] Created knowledge/people/jeremy-howard.md — Fast.ai founder profile
 ```
@@ -135,11 +135,11 @@ fn build_mutation_digest(vault: &Path) -> Result<String>
 
 ```rust
 fn load_system_prompt(vault: &Path) -> Result<String> {
-    let path = vault.join("prompts/jj.system.md");
+    let path = vault.join("prompts/j.system.md");
     let base = if path.exists() {
         fs::read_to_string(&path)?
     } else {
-        "You are JJ, a memory-first assistant.".to_string()
+        "You are J, a memory-first assistant.".to_string()
     };
 
     let toc = build_vault_toc(vault).unwrap_or_default();
@@ -155,7 +155,7 @@ fn load_system_prompt(vault: &Path) -> Result<String> {
 
 ### Phase 5: Backfill Script
 
-**One-time CLI command: `cargo run -- backfill-summaries --vault jj_vault`**
+**One-time CLI command: `cargo run -- backfill-summaries --vault j_vault`**
 
 - Scans all knowledge docs without a `summary` field
 - For each doc, sends title + first 500 chars of body to LLM with prompt:
@@ -187,10 +187,10 @@ This is simpler than re-importing 65 docs and preserves all existing metadata.
 ## References
 
 - Brainstorm: `docs/brainstorms/2026-01-31-context-aware-startup-brainstorm.md`
-- System prompt: `jj_vault/prompts/jj.system.md`
+- System prompt: `j_vault/prompts/j.system.md`
 - Chat startup: `src/chat.rs:47-49` (prompt load + inject)
 - FrontMatter struct: `src/knowledge.rs:22-34`
 - LedgerEntry struct: `src/audit.rs:11-26`
 - Tool schema: `src/agent.rs:233-265`
-- Audit ledger: `jj_vault/audit/ledger.jsonl`
+- Audit ledger: `j_vault/audit/ledger.jsonl`
 - Learning on tool schemas: `docs/solutions/integration-issues/untyped-tool-schemas-cause-empty-llm-output.md`

@@ -27,8 +27,8 @@ use crate::thread_store::{append_event, build_event, create_thread, list_threads
 use crate::vault::{init_vault, resolve_vault};
 
 #[derive(Parser)]
-#[command(name = "jay")]
-#[command(about = "JJ memory-first agent vault tools", long_about = None)]
+#[command(name = "j")]
+#[command(about = "J memory-first agent vault tools", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -53,13 +53,13 @@ enum Commands {
     },
     /// Build the embedding index for knowledge search
     Index {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
     },
     /// Start an interactive chat session with the agent
     Chat {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Resume an existing thread
@@ -83,7 +83,7 @@ enum Commands {
     },
     /// Backfill one-line summaries for knowledge docs missing them
     BackfillSummaries {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Override the LLM model
@@ -102,7 +102,7 @@ enum Commands {
     Ingest {
         /// Path to the markdown file to ingest
         file: PathBuf,
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Provenance string (e.g., "chatgpt-export", "notion", "manual")
@@ -124,7 +124,7 @@ enum Commands {
 enum VaultCommand {
     /// Create a new vault directory structure
     Init {
-        /// Where to create the vault (default: jj_vault)
+        /// Where to create the vault (default: j_vault)
         #[arg(long)]
         path: Option<PathBuf>,
     },
@@ -134,7 +134,7 @@ enum VaultCommand {
 enum ThreadCommand {
     /// Create a new conversation thread
     Create {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Custom thread ID (default: auto-generated)
@@ -175,7 +175,7 @@ enum ThreadCommand {
     },
     /// List recent threads with previews
     List {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Maximum number of threads to show
@@ -239,7 +239,7 @@ enum GatewayCommand {
 enum KnowledgeCommand {
     /// Apply a JSON knowledge patch to the vault
     Apply {
-        /// Vault path (default: jj_vault)
+        /// Vault path (default: j_vault)
         #[arg(long)]
         vault: Option<PathBuf>,
         /// Path to the patch JSON file

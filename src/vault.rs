@@ -32,9 +32,9 @@ pub fn init_vault(path: &Path) -> Result<()> {
 
     write_new_file(
         &path.join("agents.md"),
-        r#"# JJ Agents
+        r#"# J Agents
 
-This vault is the source of truth for JJ's memory and operating rules.
+This vault is the source of truth for J's memory and operating rules.
 
 ## Pointers
 - See `invariants.md` for hard rules.
@@ -45,7 +45,7 @@ This vault is the source of truth for JJ's memory and operating rules.
 
     write_new_file(
         &path.join("invariants.md"),
-        r#"# JJ Invariants
+        r#"# J Invariants
 
 1. Raw threads are append-only.
 2. Durable memory changes are reversible and attributable.
@@ -57,8 +57,8 @@ This vault is the source of truth for JJ's memory and operating rules.
     )?;
 
     write_new_file(
-        &path.join("config/jj.runtime.yml"),
-        r#"# JJ runtime configuration
+        &path.join("config/j.runtime.yml"),
+        r#"# J runtime configuration
 providers:
   default: "openai"
 
@@ -80,10 +80,10 @@ queue_for_review:
     )?;
 
     write_new_file(
-        &path.join("prompts/jj.system.md"),
-        r#"# JJ System Prompt
+        &path.join("prompts/j.system.md"),
+        r#"# J System Prompt
 
-You are JJ, a memory-first assistant. Follow the invariants and log all tool use.
+You are J, a memory-first assistant. Follow the invariants and log all tool use.
 "#,
     )?;
 
@@ -128,5 +128,5 @@ fn write_new_file(path: &Path, content: &str) -> Result<()> {
 }
 
 pub fn resolve_vault(path: Option<PathBuf>) -> PathBuf {
-    path.unwrap_or_else(|| PathBuf::from("jj_vault"))
+    path.unwrap_or_else(|| PathBuf::from("j_vault"))
 }

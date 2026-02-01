@@ -1,13 +1,13 @@
-# Brainstorm: Claude Code ↔ JJ Gateway Skill
+# Brainstorm: Claude Code ↔ J Gateway Skill
 
 **Date:** 2026-02-01
 **Status:** Ready for planning
 
 ## What We're Building
 
-A Claude Code skill that lets Claude interact with a running JJ agent through the gateway daemon. This enables two-way communication: querying JJ for context/memory while working on the codebase, and orchestrating JJ sessions (creating, sending tasks, reading history).
+A Claude Code skill that lets Claude interact with a running J agent through the gateway daemon. This enables two-way communication: querying J for context/memory while working on the codebase, and orchestrating J sessions (creating, sending tasks, reading history).
 
-The skill relies on **CLI subcommands** (`jj gateway list`, `jj gateway open`, `jj gateway history`, `jj gateway send`) that speak to the WebSocket daemon and return structured output. The skill itself invokes these via Bash.
+The skill relies on **CLI subcommands** (`j gateway list`, `j gateway open`, `j gateway history`, `j gateway send`) that speak to the WebSocket daemon and return structured output. The skill itself invokes these via Bash.
 
 ## Why This Approach
 
@@ -21,16 +21,16 @@ The skill relies on **CLI subcommands** (`jj gateway list`, `jj gateway open`, `
 - **CLI subcommands over script wrappers** — reuse existing Rust WebSocket client code.
 - **All four operations** — list, open, history, send — for full read/write access.
 - **Structured JSON output** from subcommands so Claude can parse results reliably.
-- **Skill triggers** on phrases like "ask JJ", "check JJ", "send to JJ", "JJ sessions".
+- **Skill triggers** on phrases like "ask J", "check J", "send to J", "J sessions".
 
 ## Scope
 
 ### CLI Subcommands (Rust)
-- `jj gateway list` — list sessions (JSON array)
-- `jj gateway open <session>` — create/open a session, return metadata
-- `jj gateway history <session> [--limit N]` — fetch recent events as JSON
-- `jj gateway send <session> <message>` — send message, return immediately
-- `jj gateway send <session> <message> --wait` — send message, block until agent run completes, print final response
+- `j gateway list` — list sessions (JSON array)
+- `j gateway open <session>` — create/open a session, return metadata
+- `j gateway history <session> [--limit N]` — fetch recent events as JSON
+- `j gateway send <session> <message>` — send message, return immediately
+- `j gateway send <session> <message> --wait` — send message, block until agent run completes, print final response
 
 ### Skill (SKILL.md)
 - Describes when to use each subcommand

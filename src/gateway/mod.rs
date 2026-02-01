@@ -27,12 +27,12 @@ pub fn gateway_dir() -> Result<PathBuf> {
 
 fn dirs_gateway() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".jj").join("gateway")
+    PathBuf::from(home).join(".j").join("gateway")
 }
 
 /// Resolve the port from env or default.
 pub fn resolve_port() -> u16 {
-    std::env::var("JJ_GATEWAY_PORT")
+    std::env::var("J_GATEWAY_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(DEFAULT_PORT)
@@ -129,12 +129,12 @@ pub async fn run_daemon() -> Result<()> {
     let token = ensure_token(&dir)?;
     let port = resolve_port();
 
-    info!(port, "starting jj gateway daemon");
+    info!(port, "starting j gateway daemon");
     info!("token written to {}", dir.join("token").display());
 
     // Resolve vault path from env or default
     let vault_path = crate::vault::resolve_vault(
-        std::env::var("JJ_VAULT").ok().map(std::path::PathBuf::from),
+        std::env::var("J_VAULT").ok().map(std::path::PathBuf::from),
     );
     let sessions = session::SessionManager::new(vault_path)?;
     let state = ws::AppState::new(token.clone(), sessions);
@@ -183,7 +183,7 @@ async fn oneshot_request(method: &str, params: Value) -> Result<Value> {
     let (mut write, mut read) = cli_client::connect().await.map_err(|e| {
         eprintln!(
             "{}",
-            serde_json::json!({"error": "daemon_not_running", "message": format!("Gateway daemon is not running. Start it with: jj gateway start ({})", e)})
+            serde_json::json!({"error": "daemon_not_running", "message": format!("Gateway daemon is not running. Start it with: j gateway start ({})", e)})
         );
         e
     })?;
@@ -225,7 +225,7 @@ pub async fn handle_send(session_key: &str, message: &str, wait: Option<Option<u
     let (mut write, mut read) = cli_client::connect().await.map_err(|e| {
         eprintln!(
             "{}",
-            serde_json::json!({"error": "daemon_not_running", "message": format!("Gateway daemon is not running. Start it with: jj gateway start ({})", e)})
+            serde_json::json!({"error": "daemon_not_running", "message": format!("Gateway daemon is not running. Start it with: j gateway start ({})", e)})
         );
         e
     })?;

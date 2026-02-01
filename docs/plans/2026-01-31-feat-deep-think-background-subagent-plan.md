@@ -171,7 +171,7 @@ json!({
     let events = read_thread(thread_path, None, Some(50))?;
 
     // Build inner-voice messages
-    let system = "You are the inner voice of an AI assistant named JJ. \
+    let system = "You are the inner voice of an AI assistant named J. \
         You are thinking privately — nothing you say will be shown to the user. \
         Reflect on the conversation. Note patterns, form hypotheses, \
         identify what you know vs don't know, and suggest what to explore. \

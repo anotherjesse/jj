@@ -8,11 +8,11 @@ date: 2026-02-01
 
 ## Overview
 
-Add CLI subcommands (`jj gateway list/open/history/send`) that talk to the running gateway daemon via the existing WebSocket client, and a Claude Code skill (SKILL.md) that invokes them. The gateway server already implements all four RPC methods — this is purely a client-side addition.
+Add CLI subcommands (`j gateway list/open/history/send`) that talk to the running gateway daemon via the existing WebSocket client, and a Claude Code skill (SKILL.md) that invokes them. The gateway server already implements all four RPC methods — this is purely a client-side addition.
 
 ## Motivation
 
-Claude Code currently cannot interact with a running JJ agent. Adding CLI subcommands gives any tool (including Claude Code via a skill) structured access to JJ sessions: listing, reading history, and sending messages.
+Claude Code currently cannot interact with a running J agent. Adding CLI subcommands gives any tool (including Claude Code via a skill) structured access to J sessions: listing, reading history, and sending messages.
 
 ## Proposed Solution
 
@@ -20,7 +20,7 @@ Claude Code currently cannot interact with a running JJ agent. Adding CLI subcom
 
 Extend the existing `GatewayCommand` enum in `src/main.rs` with four new variants. Each connects to the daemon via `cli_client::connect()`, sends one JSON-RPC request, prints the response as JSON to stdout, and exits.
 
-#### `jj gateway list`
+#### `j gateway list`
 
 - Calls `session.list`
 - Prints JSON array of sessions to stdout
@@ -37,7 +37,7 @@ Extend the existing `GatewayCommand` enum in `src/main.rs` with four new variant
   ]
   ```
 
-#### `jj gateway open <session_key>`
+#### `j gateway open <session_key>`
 
 - Calls `session.open` with the given key
 - Defaults to `"main"` if session_key omitted
@@ -53,7 +53,7 @@ Extend the existing `GatewayCommand` enum in `src/main.rs` with four new variant
   }
   ```
 
-#### `jj gateway history <session_key> [--limit N]`
+#### `j gateway history <session_key> [--limit N]`
 
 - Calls `session.history` with session_key and limit (default 50, max 500)
 - Prints JSON array of events to stdout
@@ -65,7 +65,7 @@ Extend the existing `GatewayCommand` enum in `src/main.rs` with four new variant
   }
   ```
 
-#### `jj gateway send <session_key> <message> [--wait [TIMEOUT]]`
+#### `j gateway send <session_key> <message> [--wait [TIMEOUT]]`
 
 Two modes:
 
@@ -83,13 +83,13 @@ Two modes:
 
 A skill file that teaches Claude Code when and how to use the CLI subcommands.
 
-**Trigger phrases:** "ask JJ", "check JJ", "send to JJ", "JJ sessions", "talk to JJ"
+**Trigger phrases:** "ask J", "check J", "send to J", "J sessions", "talk to J"
 
 **Key behaviors:**
-- Default to `--wait` when querying JJ for information
+- Default to `--wait` when querying J for information
 - Default to fire-and-forget when delegating long tasks
 - Parse JSON output and present results as readable markdown
-- If daemon not running, suggest `jj gateway start`
+- If daemon not running, suggest `j gateway start`
 - If session busy, inform user and suggest waiting
 
 ## Technical Approach
@@ -107,7 +107,7 @@ A skill file that teaches Claude Code when and how to use the CLI subcommands.
 
 | File | Purpose |
 |------|---------|
-| `.claude/skills/jj-gateway.md` | Claude Code skill definition |
+| `.claude/skills/j-gateway.md` | Claude Code skill definition |
 
 ### Implementation details
 
@@ -164,19 +164,19 @@ enum GatewayCommand {
 
 All subcommands print errors as JSON to stderr and exit non-zero:
 ```json
-{"error": "daemon_not_running", "message": "Gateway daemon is not running. Start it with: jj gateway start"}
+{"error": "daemon_not_running", "message": "Gateway daemon is not running. Start it with: j gateway start"}
 ```
 
 Error codes: `daemon_not_running`, `auth_failed`, `session_busy`, `timeout`, `connection_lost`
 
 ## Acceptance Criteria
 
-- [x] `jj gateway list` returns JSON array of sessions
-- [x] `jj gateway open main` creates/opens session, returns metadata JSON
-- [x] `jj gateway history main --limit 10` returns last 10 events as JSON
-- [x] `jj gateway send main "hello"` returns `{"status": "accepted"}` immediately
-- [x] `jj gateway send main "hello" --wait` blocks and streams events until final
-- [x] `jj gateway send main "hello" --wait 5` times out after 5 seconds
+- [x] `j gateway list` returns JSON array of sessions
+- [x] `j gateway open main` creates/opens session, returns metadata JSON
+- [x] `j gateway history main --limit 10` returns last 10 events as JSON
+- [x] `j gateway send main "hello"` returns `{"status": "accepted"}` immediately
+- [x] `j gateway send main "hello" --wait` blocks and streams events until final
+- [x] `j gateway send main "hello" --wait 5` times out after 5 seconds
 - [x] All commands print JSON errors to stderr when daemon not running
 - [x] Claude Code skill file exists and documents trigger phrases + usage patterns
 - [x] Skill correctly invokes subcommands and formats output for user
@@ -189,7 +189,7 @@ Error codes: `daemon_not_running`, `auth_failed`, `session_busy`, `timeout`, `co
 
 ## Out of Scope
 
-- `jj gateway cancel` (stop running agent)
-- `jj gateway delete <session>` (cleanup)
+- `j gateway cancel` (stop running agent)
+- `j gateway delete <session>` (cleanup)
 - Auto-start daemon from CLI subcommands
 - Streaming formatted output (human-readable mode) — JSON only for now

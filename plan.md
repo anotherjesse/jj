@@ -2,7 +2,7 @@ Below is a **build spec + phased plan** you can hand to a coding agent. It’s d
 
 ---
 
-# JJ: Memory-First Agent System Spec (Rust + LLMs + Tools)
+# J: Memory-First Agent System Spec (Rust + LLMs + Tools)
 
 ## 0) Product goals
 
@@ -34,7 +34,7 @@ These should be explicitly written into an `agents.md` / `invariants.md` file an
 
    * a reason,
    * a source (thread/message refs),
-   * an author (“jj”, “librarian-job”, “user”, etc.),
+   * an author (“j”, “librarian-job”, “user”, etc.),
    * a diff/patch trail.
 
 3. **No silent overwrites of beliefs.**
@@ -53,7 +53,7 @@ These should be explicitly written into an `agents.md` / `invariants.md` file an
 
 # 2) System components (Rust services/modules)
 
-Think of JJ as a **single orchestrator loop** with a few backing subsystems.
+Think of J as a **single orchestrator loop** with a few backing subsystems.
 
 ## 2.1 Orchestrator (the runtime loop)
 
@@ -113,17 +113,17 @@ Responsible for:
 
 # 3) On-disk “vault” layout (Markdown-first, machine-parsable)
 
-Everything lives in a single repo-like directory (call it `jj_vault/`).
+Everything lives in a single repo-like directory (call it `j_vault/`).
 
 ```
-jj_vault/
+j_vault/
   agents.md                     # table-of-contents + operating rules
   invariants.md                 # the hard rules the system enforces
   config/
-    jj.runtime.yml              # which providers, defaults, toggles
+    j.runtime.yml              # which providers, defaults, toggles
     memory.policy.yml           # auto-apply thresholds, sensitive types, etc.
   prompts/
-    jj.system.md                # main assistant system prompt (templated)
+    j.system.md                # main assistant system prompt (templated)
     curator.system.md           # post-turn memory proposal prompt
     daily_review.system.md      # daily consolidation prompt
     weekly_review.system.md
@@ -141,7 +141,7 @@ jj_vault/
     people/
       jesse.md
     projects/
-      jj-agent.md
+      j-agent.md
     prefs/
       interaction.md
     system/
@@ -253,7 +253,7 @@ Example `inbox/proposals/prop_01J...json`:
     },
     {
       "op": "queue_question",
-      "question": "Do you want JJ to auto-apply preference updates, or require review for anything labeled 'preference'?",
+      "question": "Do you want J to auto-apply preference updates, or require review for anything labeled 'preference'?",
       "risk": "medium"
     }
   ]
@@ -287,7 +287,7 @@ Context packet structure:
 
 ## 5.2 Post-response curation (per turn)
 
-After JJ answers (and tools run), run a second LLM pass (“Curator”) that:
+After J answers (and tools run), run a second LLM pass (“Curator”) that:
 
 * extracts candidate memories
 * proposes updates
@@ -462,7 +462,7 @@ Each milestone includes deliverables + definition of done (DoD). This is what yo
 
 ### Deliverables
 
-* Create `jj_vault/` layout scaffolding
+* Create `j_vault/` layout scaffolding
 * Thread CRUD:
 
   * create thread
@@ -516,7 +516,7 @@ Each milestone includes deliverables + definition of done (DoD). This is what yo
 
 ## Milestone 3 — Retrieval: embeddings + metadata search (tiered)
 
-**Goal:** JJ can fetch relevant memory before responding.
+**Goal:** J can fetch relevant memory before responding.
 
 ### Deliverables
 
@@ -551,7 +551,7 @@ Each milestone includes deliverables + definition of done (DoD). This is what yo
 
 * Curator prompt + runner:
 
-  * consumes: recent thread excerpt + JJ response
+  * consumes: recent thread excerpt + J response
   * outputs: proposal JSON (strict schema)
 * Governance policy engine:
 
@@ -578,7 +578,7 @@ Each milestone includes deliverables + definition of done (DoD). This is what yo
 
 ## Milestone 5 — Scheduled jobs + consolidation (daily/weekly reflection)
 
-**Goal:** JJ gains the “memory muscle” that improves over time.
+**Goal:** J gains the “memory muscle” that improves over time.
 
 ### Deliverables
 
@@ -694,7 +694,7 @@ Always reject:
 
 Copy/paste this checklist:
 
-1. Implement `jj_vault` layout + append-only thread JSONL store
+1. Implement `j_vault` layout + append-only thread JSONL store
 2. Implement knowledge markdown store with YAML front matter
 3. Add audit ledger + Git commit per applied durable write
 4. Implement pgvector index for knowledge + summaries
@@ -709,5 +709,5 @@ Copy/paste this checklist:
 If you want, next message I can produce:
 
 * the **exact JSON Schemas** (proposal ops, thread events, tool manifests)
-* the **first draft prompts** for `jj.system.md`, `curator.system.md`, and `daily_review.system.md` (templated, minimal, designed to evolve)
+* the **first draft prompts** for `j.system.md`, `curator.system.md`, and `daily_review.system.md` (templated, minimal, designed to evolve)
   …so your coding agent can start implementing against strict contracts immediately.

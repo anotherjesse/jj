@@ -53,7 +53,7 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
 
     let vault = resolve_vault(options.vault);
     if !vault.exists() {
-        return Err(anyhow!("vault does not exist: {}. Run `jay vault init` first.", vault.display()));
+        return Err(anyhow!("vault does not exist: {}. Run `j vault init` first.", vault.display()));
     }
 
     // Validate input file
@@ -249,7 +249,7 @@ fn load_ingest_prompt(vault: &Path, slug: &str, source_id: &str) -> Result<Strin
 
 fn default_ingest_prompt() -> String {
     concat!(
-        "You are JJ's ingestion agent. You have been given an external document to process.\n\n",
+        "You are J's ingestion agent. You have been given an external document to process.\n\n",
         "Your tasks:\n",
         "1. Read and understand the document thoroughly.\n",
         "2. Search existing knowledge for related content using knowledge_search.\n",

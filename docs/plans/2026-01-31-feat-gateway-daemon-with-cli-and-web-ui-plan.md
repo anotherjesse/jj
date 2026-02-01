@@ -27,11 +27,11 @@ date: 2026-01-31
 
 ## Overview
 
-Replace the current in-process `jj chat` with a local-first WebSocket daemon (`jj gateway`) that owns session storage, agent execution, and message routing. CLI and web UI are thin clients that connect to the same daemon. Scheduling and sub-agent delegation are just messages into sessions — no separate job runner infrastructure.
+Replace the current in-process `j chat` with a local-first WebSocket daemon (`j gateway`) that owns session storage, agent execution, and message routing. CLI and web UI are thin clients that connect to the same daemon. Scheduling and sub-agent delegation are just messages into sessions — no separate job runner infrastructure.
 
 ## Problem Statement
 
-Today `jj chat` runs the agent loop in-process with blocking I/O. This means:
+Today `j chat` runs the agent loop in-process with blocking I/O. This means:
 
 - Only one frontend (the terminal REPL) can interact with the agent
 - No streaming token delivery
@@ -41,12 +41,12 @@ Today `jj chat` runs the agent loop in-process with blocking I/O. This means:
 
 ## Proposed Solution
 
-A single daemon process (`jj gateway start`) that:
+A single daemon process (`j gateway start`) that:
 
 1. Listens on `127.0.0.1:<port>` (WebSocket + HTTP for static assets)
 2. Manages sessions (1:1 with threads), serializing agent runs per session
 3. Persists everything as append-only JSONL transcripts (crash-only, replayable)
-4. Serves the CLI adapter (`jj chat`) and web UI as equal clients
+4. Serves the CLI adapter (`j chat`) and web UI as equal clients
 
 ## Key Design Decisions
 
@@ -63,7 +63,7 @@ A session is the runtime wrapper around a thread. `session_key` (e.g., `main`) m
 
 ### Daemon Discovery
 - TCP port on `127.0.0.1`, default `9123`, configurable via env var `JJ_GATEWAY_PORT`
-- PID file at `~/.jj/gateway/daemon.pid` with `flock`-based advisory locking (prevents race when two CLI invocations try to auto-start simultaneously)
+- PID file at `~/.j/gateway/daemon.pid` with `flock`-based advisory locking (prevents race when two CLI invocations try to auto-start simultaneously)
 - CLI auto-starts the daemon if not running (spawn background process, poll port for readiness)
 
 ### Research Insights: Daemon Lifecycle
@@ -100,7 +100,7 @@ impl Drop for PidGuard {
 When a message arrives for a session with an in-flight agent run: **reject with `session.busy` error**. No queueing — the client can retry. This is simpler than a 1-deep queue and avoids hidden state where queued messages have no client visibility.
 
 ### Async Runtime
-Tokio. It's the ecosystem default and required for `axum` + `tokio-tungstenite`. The synchronous CLI fallback (`jj chat --direct`) is preserved for debugging and environments where the daemon is impractical.
+Tokio. It's the ecosystem default and required for `axum` + `tokio-tungstenite`. The synchronous CLI fallback (`j chat --direct`) is preserved for debugging and environments where the daemon is impractical.
 
 ### Research Insights: Async Migration Strategy
 
@@ -111,7 +111,7 @@ Tokio. It's the ecosystem default and required for `axum` + `tokio-tungstenite`.
 
 **Critical pitfall:** Never call `.block_on()` from within a tokio async context — it panics. If sync code needs to call async code, use `tokio::runtime::Handle::current().block_on()` only from within a `spawn_blocking` task.
 
-**Feature gating (recommended):** Gate gateway deps behind a Cargo feature so sync commands like `jj vault init` don't link the full tokio runtime:
+**Feature gating (recommended):** Gate gateway deps behind a Cargo feature so sync commands like `j vault init` don't link the full tokio runtime:
 ```toml
 [features]
 default = ["gateway"]
@@ -164,7 +164,7 @@ The daemon owns the clock. Cron triggers are internal timers that inject system 
 These are non-negotiable before any phase ships to regular use:
 
 ### 1. Bearer Token Authentication
-- Daemon generates a random token on first start, writes to `~/.jj/gateway/token` with `0600` permissions
+- Daemon generates a random token on first start, writes to `~/.j/gateway/token` with `0600` permissions
 - All WebSocket connections must include the token (as first message or query param)
 - All HTTP requests must include `Authorization: Bearer <token>` header
 - CLI reads token from the file automatically
@@ -183,7 +183,7 @@ These are non-negotiable before any phase ships to regular use:
 
 **Cross-origin WebSocket hijacking is the critical threat.** The daemon serves a web UI, so browsers will connect to it. Any malicious website the user visits while the daemon runs can attempt `new WebSocket("ws://127.0.0.1:9123")` — browsers send WebSocket upgrades without CORS preflight. Without Origin validation + token auth, any website can read chat history and trigger file modifications.
 
-**API key protection:** Load `OPENAI_API_KEY` from `~/.jj/gateway/config.toml` (file permissions `0600`), not from environment variables visible in `/proc/<pid>/environ`. Ensure no protocol response or log output includes the key.
+**API key protection:** Load `OPENAI_API_KEY` from `~/.j/gateway/config.toml` (file permissions `0600`), not from environment variables visible in `/proc/<pid>/environ`. Ensure no protocol response or log output includes the key.
 
 ## Technical Approach
 
@@ -191,10 +191,10 @@ These are non-negotiable before any phase ships to regular use:
 
 ```
                     +-----------------------+
-                    |    jj gateway         |
+                    |    j gateway         |
                     |   (tokio runtime)     |
                     |                       |
-  jj chat -------->|  WebSocket server     |
+  j chat -------->|  WebSocket server     |
   (CLI REPL)       |    |                  |
                     |  Session manager     |
   Web UI --------->|    |                  |
@@ -228,9 +228,9 @@ SessionManager
 
 Introduce tokio, axum, tokio-tungstenite. Stand up the daemon process with:
 
-- `jj gateway start` — starts daemon, writes PID file (with flock), binds port, generates bearer token
-- `jj gateway stop` — graceful shutdown via SIGTERM
-- `jj gateway status` — check if running (read PID file, attempt TCP connect)
+- `j gateway start` — starts daemon, writes PID file (with flock), binds port, generates bearer token
+- `j gateway stop` — graceful shutdown via SIGTERM
+- `j gateway status` — check if running (read PID file, attempt TCP connect)
 - WebSocket accepts connections with token validation
 - Health check HTTP endpoint (`GET /health`)
 - Origin header validation on WebSocket upgrade
@@ -321,15 +321,15 @@ These call the same internal `SessionManager` methods the WebSocket handlers use
 
 **Tool schema requirement** (from institutional learning): Every tool parameter must have full `properties` schema or detailed `description`. No bare `{ "type": "object" }`. Test with a fresh conversation to verify the LLM can use each tool correctly from schema alone.
 
-#### Phase 3: CLI adapter (`jj chat` via daemon)
+#### Phase 3: CLI adapter (`j chat` via daemon)
 
-- `jj chat` detects daemon (check PID file + port), auto-starts if needed
-- Reads bearer token from `~/.jj/gateway/token`
+- `j chat` detects daemon (check PID file + port), auto-starts if needed
+- Reads bearer token from `~/.j/gateway/token`
 - Connects via WebSocket, opens session (auto-subscribes)
 - REPL loop: user input -> `session.send`, render `delta` events as streaming text
 - Slash commands: `/help`, `/session <key>`, `/history [n]`, `/sessions` (list), `/model <name>`
 - Ctrl+C mid-stream: client disconnects, agent run continues to completion (writes to JSONL)
-- `jj chat --direct` preserved as sync fallback (current behavior)
+- `j chat --direct` preserved as sync fallback (current behavior)
 
 **WebSocket client pattern:**
 ```rust
@@ -367,7 +367,7 @@ Key files:
 #### Phase 5: Scheduling (stretch)
 
 - Internal cron timer in the daemon (simple `tokio::time::interval` timers)
-- Config in env vars or `~/.jj/gateway/config.toml` under `[schedules]`
+- Config in env vars or `~/.j/gateway/config.toml` under `[schedules]`
 - Fires by injecting a system event into the target session via the same internal `session.send` path
 - Heartbeat support: periodic agent turns that read `HEARTBEAT.md`
 
@@ -410,7 +410,7 @@ Events:
 
 **Dropped for v0.1 (add when actually needed):**
 - `gateway.hello` handshake — just connect and authenticate. Version negotiation is YAGNI when server and client ship together.
-- `gateway.shutdown` — redundant with `jj gateway stop` via signal.
+- `gateway.shutdown` — redundant with `j gateway stop` via signal.
 - `session.subscribe` as separate method — merged into `session.open`.
 - `idempotency_key` — localhost TCP is reliable; one client per session in practice. Add if duplication actually occurs.
 - `seq` numbering — single TCP connection already orders messages. `final` event is the authoritative recovery point.
@@ -430,9 +430,9 @@ This enables audit trails for cross-session agent delegation.
 ## Acceptance Criteria
 
 ### Phase 1 (Scaffold)
-- [ ] `jj gateway start` launches daemon, binds port, writes PID file, generates token
-- [ ] `jj gateway stop` sends shutdown signal
-- [ ] `jj gateway status` reports running/stopped
+- [ ] `j gateway start` launches daemon, binds port, writes PID file, generates token
+- [ ] `j gateway stop` sends shutdown signal
+- [ ] `j gateway status` reports running/stopped
 - [ ] WebSocket accepts connections with token validation
 - [ ] Origin header validated on WebSocket upgrade
 - [ ] `GET /health` returns 200
@@ -450,11 +450,11 @@ This enables audit trails for cross-session agent delegation.
 - [ ] Gateway tools (session_open, session_send, etc.) available to agent
 
 ### Phase 3 (CLI)
-- [ ] `jj chat` auto-starts daemon if not running
+- [ ] `j chat` auto-starts daemon if not running
 - [ ] Reads bearer token automatically
 - [ ] Streaming token display in terminal
 - [ ] `/session`, `/sessions`, `/history` slash commands work
-- [ ] `jj chat --direct` still works without daemon
+- [ ] `j chat --direct` still works without daemon
 - [ ] Reconnect on daemon restart
 
 ### Phase 4 (Web UI)
@@ -521,13 +521,13 @@ gateway = ["tokio", "axum", "tokio-tungstenite", "rust-embed", "axum-embed", "re
 
 ## References
 
-- JJ Gateway v0.1 spec: `jj_vault/sources/2026/01/31/jj-gateway-v-0.md`
-- WebSocket protocol: `jj_vault/knowledge/system/jj-gateway-websocket-protocol-v0-1.md`
-- Persistence model: `jj_vault/knowledge/system/jj-gateway-persistence-model.md`
-- CLI UX spec: `jj_vault/knowledge/system/jj-gateway-cli-ux-jj-chat-v0-1.md`
-- OpenClaw scheduling: `jj_vault/knowledge/system/openclaw-scheduling.md`
-- OpenClaw gateway control plane: `jj_vault/knowledge/system/openclaw-gateway-control-plane.md`
-- Crash-only design: `jj_vault/knowledge/prefs/crash-only-replayable-systems.md`
+- J Gateway v0.1 spec: `j_vault/sources/2026/01/31/j-gateway-v-0.md`
+- WebSocket protocol: `j_vault/knowledge/system/j-gateway-websocket-protocol-v0-1.md`
+- Persistence model: `j_vault/knowledge/system/j-gateway-persistence-model.md`
+- CLI UX spec: `j_vault/knowledge/system/j-gateway-cli-ux-j-chat-v0-1.md`
+- OpenClaw scheduling: `j_vault/knowledge/system/openclaw-scheduling.md`
+- OpenClaw gateway control plane: `j_vault/knowledge/system/openclaw-gateway-control-plane.md`
+- Crash-only design: `j_vault/knowledge/prefs/crash-only-replayable-systems.md`
 - Tool schema gotcha: `docs/solutions/integration-issues/untyped-tool-schemas-cause-empty-llm-output.md`
 - Axum WebSocket docs: https://docs.rs/axum/latest/axum/extract/ws/index.html
 - Tokio bridging sync/async: https://tokio.rs/tokio/topics/bridging

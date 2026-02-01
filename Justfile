@@ -12,16 +12,16 @@ verify:
 smoketest:
 	scripts/smoke_openai.sh
 
-vault-init path="jj_vault":
+vault-init path="j_vault":
 	cargo run -- vault init --path {{path}}
 
-thread-create vault="jj_vault":
+thread-create vault="j_vault":
 	cargo run -- thread create --vault {{vault}}
 
-chat vault="jj_vault":
+chat vault="j_vault":
 	cargo run -- chat --vault {{vault}}
 
-embed-index vault="jj_vault":
+embed-index vault="j_vault":
 	cargo run -- index --vault {{vault}}
 
 gateway-start:
@@ -35,8 +35,8 @@ gateway-status:
 
 gateway-open:
 	#!/usr/bin/env bash
-	token=$(cat ~/.jj/gateway/token 2>/dev/null || echo "")
-	port=${JJ_GATEWAY_PORT:-9123}
+	token=$(cat ~/.j/gateway/token 2>/dev/null || echo "")
+	port=${J_GATEWAY_PORT:-9123}
 	open "http://127.0.0.1:${port}/?token=${token}"
 
 install:

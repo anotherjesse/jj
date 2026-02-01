@@ -5,18 +5,18 @@ date: 2026-01-31
 brainstorm: docs/brainstorms/2026-01-31-source-ingestion-brainstorm.md
 ---
 
-# feat: Source Ingestion — `jj ingest <file>`
+# feat: Source Ingestion — `j ingest <file>`
 
 ## Overview
 
-Add a `jj ingest <file.md>` CLI command that imports external markdown documents into the vault. The original is preserved verbatim in `sources/`. An agent flow (reusing the orchestrator loop from `repl.rs`) processes the document to produce a summary and knowledge extraction proposals through the existing governance pipeline.
+Add a `j ingest <file.md>` CLI command that imports external markdown documents into the vault. The original is preserved verbatim in `sources/`. An agent flow (reusing the orchestrator loop from `repl.rs`) processes the document to produce a summary and knowledge extraction proposals through the existing governance pipeline.
 
 ## Proposed Solution
 
 ### CLI Interface
 
 ```
-jj ingest <file_path> --vault <vault_path> [--source <provenance>] [--tags tag1,tag2] [--title "Title"]
+j ingest <file_path> --vault <vault_path> [--source <provenance>] [--tags tag1,tag2] [--title "Title"]
 ```
 
 - `file_path`: Path to a markdown file (must be valid UTF-8, `.md` extension)
@@ -44,7 +44,7 @@ jj ingest <file_path> --vault <vault_path> [--source <provenance>] [--tags tag1,
 ```
 sources/
   YYYY/MM/DD/
-    {slug}.md          # verbatim original + jj frontmatter prepended
+    {slug}.md          # verbatim original + j frontmatter prepended
 summaries/
   sources/
     {slug}.md          # agent-generated summary with frontmatter
@@ -61,7 +61,7 @@ title: "Planning Conversation"
 ingested_at: 2026-01-31T14:00:00Z
 original_path: /Users/jesse/docs/planning.md
 source: "chatgpt-export"  # from --source
-tags: [planning, jj]       # from --tags
+tags: [planning, j]       # from --tags
 processing_status: complete # pending|processing|complete|failed
 content_hash: sha256:abc...
 ---
@@ -111,7 +111,7 @@ pub fn ingest_file(vault_path, file_path, source, tags, title) -> Result<IngestR
 
 **Acceptance criteria:**
 
-- [x] `jj ingest plan.md --vault jj_vault` copies file to `sources/2026/01/31/plan.md`
+- [x] `j ingest plan.md --vault j_vault` copies file to `sources/2026/01/31/plan.md`
 - [x] Frontmatter is prepended with correct fields
 - [x] Content hash matches original file
 - [x] `sources/` directory created by `vault init`
@@ -145,10 +145,10 @@ pub fn run_agent_loop(
 
 **Then `repl.rs` calls `run_agent_loop()` instead of inlining the loop.** Same for `ingest.rs`.
 
-**Ingestion system prompt** — new file `jj_vault/prompts/ingest.system.md`:
+**Ingestion system prompt** — new file `j_vault/prompts/ingest.system.md`:
 
 ```markdown
-You are JJ's ingestion agent. You have been given an external document to process.
+You are J's ingestion agent. You have been given an external document to process.
 
 Your tasks:
 1. Read and understand the document thoroughly
@@ -168,7 +168,7 @@ Follow the invariants. Every knowledge write needs a reason and source reference
 
 - [x] Agent loop extracted from `repl.rs` into `agent.rs`
 - [x] REPL still works identically (calls extracted function)
-- [x] `jj ingest` runs the agent loop with ingestion prompt
+- [x] `j ingest` runs the agent loop with ingestion prompt
 - [ ] Agent produces summary in `summaries/sources/` (requires live LLM test)
 - [ ] Agent produces at least one knowledge proposal (requires live LLM test)
 - [x] All agent actions logged in the ingestion thread
@@ -207,7 +207,7 @@ Proposals: 3 created in inbox/proposals/
 |------|----------|
 | File not found | Exit with error before any vault writes |
 | Not UTF-8 | Exit with error |
-| Vault doesn't exist | Exit with error (use `jj vault init` first) |
+| Vault doesn't exist | Exit with error (use `j vault init` first) |
 | Slug collision | Append ULID suffix to slug |
 | Agent API failure | Set `processing_status: failed`, source still preserved, print error |
 | Large file (>1MB) | Agent handles chunking itself; no CLI limit initially |

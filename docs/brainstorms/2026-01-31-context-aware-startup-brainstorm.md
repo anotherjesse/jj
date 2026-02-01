@@ -5,7 +5,7 @@
 
 ## What We're Building
 
-When `jay chat` starts, the agent should already know the shape of its own memory. Two things get injected into the system prompt automatically at chat startup:
+When `j chat` starts, the agent should already know the shape of its own memory. Two things get injected into the system prompt automatically at chat startup:
 
 1. **Vault TOC** — A compact tree of ALL knowledge docs with one-line summaries. The agent can see everything it knows at a glance and choose to `knowledge_read` specific docs.
 

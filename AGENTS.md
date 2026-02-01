@@ -1,4 +1,4 @@
-# JJ Project Notes
+# J Project Notes
 
 This repo builds a memory-first agent system in Rust. The authoritative build spec and milestones live in `plan.md`.
 
@@ -12,9 +12,9 @@ This repo builds a memory-first agent system in Rust. The authoritative build sp
 Prereqs: Rust toolchain, valid `.env` with `OPENAI_API_KEY`.
 
 Common commands:
-- `cargo run -- vault init --path jj_vault`
-- `cargo run -- thread create --vault jj_vault`
-- `cargo run -- chat --vault jj_vault`
+- `cargo run -- vault init --path j_vault`
+- `cargo run -- thread create --vault j_vault`
+- `cargo run -- chat --vault j_vault`
 - `scripts/verify.sh`
 - `scripts/smoke_openai.sh`
 

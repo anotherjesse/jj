@@ -51,7 +51,7 @@ pub struct ThreadEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadHeader {
-    pub jj_thread: bool,
+    pub j_thread: bool,
     pub thread_id: String,
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,7 +93,7 @@ pub fn create_thread(
         model: None,
     });
     let header = ThreadHeader {
-        jj_thread: true,
+        j_thread: true,
         thread_id: thread_id.clone(),
         kind: meta.kind,
         agent: meta.agent,
@@ -129,7 +129,7 @@ pub fn read_header(thread_path: &Path) -> Result<Option<ThreadHeader>> {
     let reader = BufReader::new(file);
     if let Some(Ok(first_line)) = reader.lines().next() {
         if let Ok(header) = serde_json::from_str::<ThreadHeader>(&first_line) {
-            if header.jj_thread {
+            if header.j_thread {
                 return Ok(Some(header));
             }
         }
@@ -147,7 +147,7 @@ pub fn read_thread(thread_path: &Path, offset: Option<usize>, limit: Option<usiz
     for (idx, line) in reader.lines().enumerate() {
         let line = line?;
         // Skip header line
-        if idx == 0 && serde_json::from_str::<ThreadHeader>(&line).map(|h| h.jj_thread).unwrap_or(false) {
+        if idx == 0 && serde_json::from_str::<ThreadHeader>(&line).map(|h| h.j_thread).unwrap_or(false) {
             continue;
         }
         if event_idx < offset {

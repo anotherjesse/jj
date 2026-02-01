@@ -8,7 +8,7 @@ date: 2026-01-31
 
 ## Overview
 
-Add a `generate_image` tool to the agent that generates images via the `flux2` CLI, stores them in `jj_vault/media/` with user-specified paths (encouraging descriptive folder/filenames for uniqueness), and returns the relative path. If the path already exists, return an error. Ensure the full pipeline works: generation -> storage -> display via `draw` tool (CLI canvas) and web UI.
+Add a `generate_image` tool to the agent that generates images via the `flux2` CLI, stores them in `j_vault/media/` with user-specified paths (encouraging descriptive folder/filenames for uniqueness), and returns the relative path. If the path already exists, return an error. Ensure the full pipeline works: generation -> storage -> display via `draw` tool (CLI canvas) and web UI.
 
 ## Problem Statement / Motivation
 
@@ -69,7 +69,7 @@ After `generate_image` returns successfully, the agent calls the existing `draw`
 **CLI (already works):** `draw` calls `rcast draw {path}` — no changes needed.
 
 **Web UI (needs work):**
-1. Add a static file handler in the gateway to serve `jj_vault/media/` at `/media/`
+1. Add a static file handler in the gateway to serve `j_vault/media/` at `/media/`
 2. In the web UI, detect image paths in tool results and render `<img>` tags
 3. When `tool_call_result` event arrives for `generate_image` or `draw`, render the image inline
 
@@ -105,7 +105,7 @@ After `generate_image` returns successfully, the agent calls the existing `draw`
 - [x] Intermediate directories created automatically
 - [x] Returned path is relative (`media/food/pizza.png`)
 - [x] Agent can chain `generate_image` -> `draw` to show the result
-- [x] Gateway serves `jj_vault/media/` as static files at `/media/`
+- [x] Gateway serves `j_vault/media/` as static files at `/media/`
 - [x] Web UI renders images inline when tool results contain image paths
 - [x] `media/` directory added to vault init
 
@@ -133,7 +133,7 @@ After `generate_image` returns successfully, the agent calls the existing `draw`
 - Add `media/` to vault init directory list
 
 ### `src/gateway/session.rs` (or new handler)
-- Add static file serving for `/media/` -> `jj_vault/media/`
+- Add static file serving for `/media/` -> `j_vault/media/`
 
 ### `web/index.html`
 - Handle `tool_call_result` events for image tools

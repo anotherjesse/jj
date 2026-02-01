@@ -210,7 +210,7 @@ pub fn tool_schemas() -> Vec<Value> {
             "type": "function",
             "function": {
                 "name": "vault_init",
-                "description": "Initialize a JJ vault directory with required structure.",
+                "description": "Initialize a J vault directory with required structure.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -304,7 +304,7 @@ pub fn tool_schemas() -> Vec<Value> {
                         },
                         "author": { "type": "string" },
                         "reason": { "type": "string" },
-                        "change_summary": { "type": "string", "description": "One-line description of what this specific mutation does. Max 150 chars. Example: 'Created project doc for JJ Gateway with tech stack and architecture'" },
+                        "change_summary": { "type": "string", "description": "One-line description of what this specific mutation does. Max 150 chars. Example: 'Created project doc for J Gateway with tech stack and architecture'" },
                         "proposal_id": { "type": "string" },
                         "commit": { "type": "boolean" }
                     },
@@ -621,7 +621,7 @@ fn execute_tool(
                 }
                 let bytes = resp.bytes()?;
                 let ext = source.rsplit('.').next().unwrap_or("png");
-                let tmp = std::env::temp_dir().join(format!("jj_draw.{ext}"));
+                let tmp = std::env::temp_dir().join(format!("j_draw.{ext}"));
                 fs::write(&tmp, &bytes)?;
                 tmp
             } else if Path::new(source).is_absolute() {
@@ -817,7 +817,7 @@ fn deep_think_background(
     }
 
     // 2. Build inner-voice system prompt
-    let system_msg = "You are the inner voice of an AI assistant named JJ. \
+    let system_msg = "You are the inner voice of an AI assistant named J. \
         You are thinking privately — nothing you say will be shown to the user. \
         Reflect on the conversation so far. Note patterns, form hypotheses, \
         identify what you know vs don't know, and suggest what to explore or say next. \

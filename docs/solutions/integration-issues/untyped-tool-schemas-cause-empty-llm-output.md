@@ -40,13 +40,13 @@ Added a detailed `description` to the `patch` field enumerating all available fi
 }
 ```
 
-Also updated the system prompt (`jj_vault/prompts/ingest.system.md`) with explicit documentation of the patch format and a JSON example showing `body_append` usage.
+Also updated the system prompt (`j_vault/prompts/ingest.system.md`) with explicit documentation of the patch format and a JSON example showing `body_append` usage.
 
 ### Files changed
 
 - `src/agent.rs` — tool schema description for `knowledge_apply`
 - `src/ingest.rs` — default prompt with `body_append` documentation
-- `jj_vault/prompts/ingest.system.md` — detailed patch format docs + example
+- `j_vault/prompts/ingest.system.md` — detailed patch format docs + example
 
 ## Prevention
 

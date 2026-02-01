@@ -1,4 +1,4 @@
-# Source Ingestion: Import External Documents into JJ
+# Source Ingestion: Import External Documents into J
 
 **Date:** 2026-01-31
 **Status:** Brainstorm complete, ready for planning
@@ -7,7 +7,7 @@
 
 ## What We're Building
 
-A `jj ingest <file.md>` CLI command that imports external markdown documents (planning transcripts, reference docs, articles, notes) into the vault. The original is preserved verbatim in a new `sources/` directory. An **agent flow** (not a raw LLM call) processes the document to produce:
+A `j ingest <file.md>` CLI command that imports external markdown documents (planning transcripts, reference docs, articles, notes) into the vault. The original is preserved verbatim in a new `sources/` directory. An **agent flow** (not a raw LLM call) processes the document to produce:
 
 1. A **summary** stored in `summaries/sources/` — this is what tiered retrieval hits by default
 2. **Knowledge extraction proposals** submitted through the existing governance pipeline — individual facts, preferences, people, projects get proposed as knowledge docs
@@ -36,7 +36,7 @@ The agent flow is key: ingest uses the full orchestrator loop with tool calling.
 ## Vault Layout Addition
 
 ```
-jj_vault/
+j_vault/
   sources/
     2026/01/31/
       planning-conversation.md    # verbatim original with frontmatter prepended

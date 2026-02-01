@@ -151,7 +151,7 @@ impl SessionManager {
             None,
             Some(ThreadMeta {
                 kind: "chat".into(),
-                agent: Some("jj".into()),
+                agent: Some("j".into()),
                 model: Some(model),
             }),
         )?;
