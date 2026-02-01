@@ -144,6 +144,7 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
             "knowledge_read".into(),
             "knowledge_search".into(),
         ]),
+        event_sink: None,
     };
 
     // Snapshot proposal count before ingestion

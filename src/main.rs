@@ -412,7 +412,7 @@ async fn main() -> Result<()> {
                 allow_commit,
                 history,
                 direct,
-            })?;
+            }).await?;
         }
         Commands::BackfillSummaries { vault, model, dry_run } => {
             use crate::knowledge::read_doc;

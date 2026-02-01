@@ -29,13 +29,13 @@ pub struct ChatOptions {
     pub direct: bool,
 }
 
-pub fn run_chat(options: ChatOptions) -> Result<()> {
+pub async fn run_chat(options: ChatOptions) -> Result<()> {
     dotenv().ok();
 
     // If not --direct, try daemon mode
     if !options.direct {
         if crate::gateway::daemon_status()? {
-            return run_chat_daemon(options);
+            return run_chat_daemon_async(options).await;
         }
         // Daemon not running — fall through to direct mode
         eprintln!("(daemon not running, using direct mode)");
@@ -124,6 +124,7 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
             max_turns: 20,
             allow_commit: options.allow_commit,
             tool_filter: None,
+            event_sink: None,
         };
         messages = run_agent_loop(&config, messages, &client)?;
     }
@@ -132,12 +133,6 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
 }
 
 /// Run chat via the gateway daemon over WebSocket.
-fn run_chat_daemon(options: ChatOptions) -> Result<()> {
-    // Build a tokio runtime for the async WS client
-    let rt = tokio::runtime::Runtime::new()?;
-    rt.block_on(run_chat_daemon_async(options))
-}
-
 async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
     use crate::gateway::cli_client;
     use futures_util::SinkExt;
@@ -146,7 +141,7 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
     let (mut write, mut read) = cli_client::connect().await?;
 
     // Determine session key
-    let session_key = options
+    let mut session_key = options
         .thread
         .as_ref()
         .and_then(|p| p.file_stem())
@@ -205,7 +200,19 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
                                     }
                                     "user_message" => {} // we sent this, ignore
                                     _ => {
-                                        // Response frames (type: "res") — ignore, handled by request()
+                                        // Response frames (type: "res") — print payload for slash commands
+                                        if val.get("type").and_then(|v| v.as_str()) == Some("res") {
+                                            if let Some(payload) = val.get("payload") {
+                                                if let Some(sessions) = payload.get("sessions").and_then(|s| s.as_array()) {
+                                                    println!("Sessions:");
+                                                    for s in sessions {
+                                                        let key = s.get("session_key").and_then(|v| v.as_str()).unwrap_or("?");
+                                                        let thread = s.get("thread_id").and_then(|v| v.as_str()).unwrap_or("?");
+                                                        println!("  {key} (thread: {thread})");
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -255,7 +262,21 @@ async fn run_chat_daemon_async(options: ChatOptions) -> Result<()> {
             write
                 .send(Message::Text(serde_json::to_string(&frame)?.into()))
                 .await?;
-            // Response will be printed by event task (not ideal, but works for now)
+            continue;
+        }
+        if let Some(new_key) = input.strip_prefix("/session ") {
+            let new_key = new_key.trim();
+            let frame = json!({
+                "type": "req",
+                "id": ulid::Ulid::new().to_string(),
+                "method": "session.open",
+                "params": {"session_key": new_key},
+            });
+            write
+                .send(Message::Text(serde_json::to_string(&frame)?.into()))
+                .await?;
+            eprintln!("Switched to session: {new_key}");
+            session_key = new_key.to_string();
             continue;
         }
 

@@ -15,6 +15,15 @@ use crate::thread_store::{
 };
 use crate::vault::init_vault;
 
+/// Events emitted during an agent run for live streaming to clients.
+#[derive(Debug, Clone)]
+pub enum AgentEvent {
+    /// Tool call started
+    ToolActivity { tool_name: String },
+    /// Final assistant message content
+    FinalContent { content: String },
+}
+
 pub struct AgentConfig {
     pub vault_path: PathBuf,
     pub thread_path: PathBuf,
@@ -22,6 +31,8 @@ pub struct AgentConfig {
     pub allow_commit: bool,
     /// If set, only expose these tools (by name). If None, expose all.
     pub tool_filter: Option<Vec<String>>,
+    /// Optional channel for streaming events to gateway clients.
+    pub event_sink: Option<std::sync::mpsc::Sender<AgentEvent>>,
 }
 
 pub fn run_agent_loop(
@@ -50,7 +61,10 @@ pub fn run_agent_loop(
 
         if response.tool_calls.is_empty() {
             let content = response.content.unwrap_or_default();
-            if !content.is_empty() {
+            if let Some(ref sink) = config.event_sink {
+                // Streaming to gateway — don't print locally
+                let _ = sink.send(AgentEvent::FinalContent { content: content.clone() });
+            } else if !content.is_empty() {
                 println!("{content}");
             }
             let event = build_event(
@@ -72,6 +86,9 @@ pub fn run_agent_loop(
         messages.push(json!({"role": "assistant", "tool_calls": tool_call_payload}));
 
         for call in response.tool_calls {
+            if let Some(ref sink) = config.event_sink {
+                let _ = sink.send(AgentEvent::ToolActivity { tool_name: call.name.clone() });
+            }
             let reason = call
                 .arguments
                 .get("reason")

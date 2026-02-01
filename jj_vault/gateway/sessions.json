@@ -1,0 +1,14 @@
+[
+  {
+    "session_key": "main",
+    "thread_id": "thr_01KGBTN7FCWH6D1PQT1QS2QMPS",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBTN7FCWH6D1PQT1QS2QMPS.jsonl",
+    "created_at": "2026-02-01T05:26:23.469619+00:00"
+  },
+  {
+    "session_key": "session-1769911507924",
+    "thread_id": "thr_01KGBF4PYNBBKFE3TX4VXZF2ZH",
+    "thread_path": "jj_vault/threads/2026/02/01/thr_01KGBF4PYNBBKFE3TX4VXZF2ZH.jsonl",
+    "created_at": "2026-02-01T02:05:07.926270+00:00"
+  }
+]

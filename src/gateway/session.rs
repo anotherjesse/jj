@@ -257,33 +257,62 @@ impl SessionManager {
         );
         append_event(&thread_path, started)?;
 
+        // Create a sync channel for the agent loop to emit events
+        let (event_tx, event_rx) = std::sync::mpsc::channel::<crate::agent::AgentEvent>();
+
+        // Spawn a task that bridges sync events to async broadcast
+        let subs_clone = subscribers.clone();
+        let sk = session_key.to_string();
+        let bridge_task = tokio::spawn(async move {
+            // Wrap the blocking recv in spawn_blocking to avoid blocking the async runtime
+            loop {
+                let rx_ref = &event_rx;
+                // We can't move event_rx into spawn_blocking, so poll with try_recv + sleep
+                match rx_ref.try_recv() {
+                    Ok(event) => {
+                        use crate::agent::AgentEvent;
+                        let ws_event = match event {
+                            AgentEvent::ToolActivity { tool_name } => json!({
+                                "type": "event",
+                                "event": "tool_activity",
+                                "session_id": sk,
+                                "payload": { "tool_name": tool_name }
+                            }),
+                            AgentEvent::FinalContent { content } => json!({
+                                "type": "event",
+                                "event": "final",
+                                "session_id": sk,
+                                "payload": { "content": content }
+                            }),
+                        };
+                        broadcast_to(&subs_clone, &ws_event);
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                    }
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                }
+            }
+        });
+
         // Run the sync agent loop in a blocking thread
         let result = tokio::task::spawn_blocking(move || {
-            run_agent_blocking(&vault_path, &thread_path, &session_key_owned)
+            run_agent_blocking(&vault_path, &thread_path, &session_key_owned, event_tx)
         })
         .await
         .context("agent task panicked")?;
 
-        match &result {
-            Ok(final_content) => {
-                // Broadcast the final response
-                let final_event = json!({
-                    "type": "event",
-                    "event": "final",
-                    "session_id": session_key,
-                    "payload": { "content": final_content }
-                });
-                broadcast_to(&subscribers, &final_event);
-            }
-            Err(e) => {
-                let err_event = json!({
-                    "type": "event",
-                    "event": "error",
-                    "session_id": session_key,
-                    "payload": { "message": e.to_string() }
-                });
-                broadcast_to(&subscribers, &err_event);
-            }
+        // Wait for bridge to drain remaining events
+        let _ = bridge_task.await;
+
+        if let Err(ref e) = result {
+            let err_event = json!({
+                "type": "event",
+                "event": "error",
+                "session_id": session_key,
+                "payload": { "message": e.to_string() }
+            });
+            broadcast_to(&subscribers, &err_event);
         }
 
         // Write run.completed marker
@@ -331,6 +360,7 @@ fn run_agent_blocking(
     vault_path: &Path,
     thread_path: &Path,
     _session_key: &str,
+    event_sink: std::sync::mpsc::Sender<crate::agent::AgentEvent>,
 ) -> Result<String> {
     use crate::agent::{run_agent_loop, AgentConfig};
     use crate::chat::load_system_prompt;
@@ -379,6 +409,7 @@ fn run_agent_blocking(
         max_turns: 20,
         allow_commit: false,
         tool_filter: None,
+        event_sink: Some(event_sink),
     };
 
     let final_messages = run_agent_loop(&config, messages, &client)?;
