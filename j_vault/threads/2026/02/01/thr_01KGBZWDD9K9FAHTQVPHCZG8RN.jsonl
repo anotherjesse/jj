@@ -1,1 +1,1 @@
-{"j_thread":true,"thread_id":"thr_01KGBZWDD9K9FAHTQVPHCZG8RN","kind":"chat","agent":"j","model":"gpt-5-mini-2025-08-07","created_at":"2026-02-01T06:57:41.803332Z"}
+{"j_thread": true, "thread_id": "thr_01KGBZWDD9K9FAHTQVPHCZG8RN", "kind": "chat", "agent": "j", "model": "gpt-5-mini-2025-08-07", "created_at": "2026-02-01T06:57:41.803332Z", "engine": "anthropic", "base_url": "https://api.anthropic.com"}

@@ -25,6 +25,10 @@ pub struct SessionEntry {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub first_user_line: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub engine: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 /// Runtime state for a single session.
@@ -38,6 +42,8 @@ struct SessionState {
     deep_think_running: Arc<AtomicBool>,
     /// Flag indicating whether title generation is running.
     title_running: Arc<AtomicBool>,
+    /// Per-session engine override (runtime only, not persisted to config).
+    engine_override: RwLock<Option<crate::engine::EngineKind>>,
 }
 
 /// Manages all sessions, backed by sessions.json in the vault.
@@ -93,6 +99,7 @@ impl SessionManager {
                         subscribers: Mutex::new(Vec::new()),
                         deep_think_running: Arc::new(AtomicBool::new(false)),
                         title_running: Arc::new(AtomicBool::new(false)),
+                        engine_override: RwLock::new(None),
                     }),
                 );
             }
@@ -142,10 +149,16 @@ impl SessionManager {
             }
         }
 
-        // Create new session — resolve model so it's recorded in the thread header
-        let model = std::env::var("LLM_MODEL")
-            .or_else(|_| std::env::var("OPENAI_MODEL"))
-            .unwrap_or_else(|_| "gpt-5-mini-2025-08-07".to_string());
+        // Create new session — resolve engine + model for the thread header
+        let engine_kind = crate::engine::resolve_engine_kind().unwrap_or(crate::engine::EngineKind::OpenAI);
+        let config = crate::engine::EngineConfig::from_env(engine_kind);
+        let (model, base_url) = match &config {
+            Ok(c) => (c.model.clone(), c.base_url.clone()),
+            Err(_) => {
+                let (dm, du) = engine_kind.defaults();
+                (dm.to_string(), du.to_string())
+            }
+        };
         let thread_path = create_thread(
             &self.vault_path,
             None,
@@ -153,7 +166,9 @@ impl SessionManager {
             Some(ThreadMeta {
                 kind: "chat".into(),
                 agent: Some("j".into()),
-                model: Some(model),
+                model: Some(model.clone()),
+                engine: Some(engine_kind.as_str().to_string()),
+                base_url: Some(base_url),
             }),
         )?;
         let thread_id = thread_path
@@ -169,6 +184,8 @@ impl SessionManager {
             created_at: chrono::Utc::now().to_rfc3339(),
             title: None,
             first_user_line: None,
+            engine: Some(engine_kind.as_str().to_string()),
+            model: Some(model),
         };
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -178,6 +195,7 @@ impl SessionManager {
             subscribers: Mutex::new(vec![tx]),
             deep_think_running: Arc::new(AtomicBool::new(false)),
             title_running: Arc::new(AtomicBool::new(false)),
+            engine_override: RwLock::new(None),
         });
 
         {
@@ -198,6 +216,49 @@ impl SessionManager {
             entries.push(s.entry.read().await.clone());
         }
         entries
+    }
+
+    /// Set the engine override for a session (runtime only).
+    pub async fn set_engine(&self, session_key: &str, kind: crate::engine::EngineKind) -> Result<(String, String)> {
+        if !kind.is_available() {
+            return Err(anyhow!("engine {:?} has no API key configured", kind));
+        }
+        let sessions = self.sessions.read().await;
+        let state = sessions
+            .get(session_key)
+            .ok_or_else(|| anyhow!("session not found: {session_key}"))?;
+        *state.engine_override.write().await = Some(kind);
+        // Update the cached entry for display purposes
+        let config = crate::engine::EngineConfig::from_env(kind)?;
+        {
+            let mut entry = state.entry.write().await;
+            entry.engine = Some(kind.as_str().to_string());
+            entry.model = Some(config.model.clone());
+        }
+        Ok((kind.as_str().to_string(), config.model))
+    }
+
+    /// Get the effective engine kind for a session.
+    #[allow(dead_code)]
+    pub async fn get_engine(&self, session_key: &str) -> Result<crate::engine::EngineKind> {
+        let sessions = self.sessions.read().await;
+        let state = sessions
+            .get(session_key)
+            .ok_or_else(|| anyhow!("session not found: {session_key}"))?;
+        if let Some(kind) = *state.engine_override.read().await {
+            return Ok(kind);
+        }
+        crate::engine::resolve_engine_kind()
+    }
+
+    /// Get the engine override for a session (used by run_agent).
+    #[allow(dead_code)]
+    async fn get_engine_override(&self, session_key: &str) -> Option<crate::engine::EngineKind> {
+        let sessions = self.sessions.read().await;
+        if let Some(state) = sessions.get(session_key) {
+            return *state.engine_override.read().await;
+        }
+        None
     }
 
     /// Fetch last N events from a session's thread transcript.
@@ -382,8 +443,9 @@ impl SessionManager {
 
         // Run the sync agent loop in a blocking thread
         let deep_think_flag_clone = Arc::clone(&state.deep_think_running);
+        let engine_override = (*state.engine_override.read().await).clone();
         let result = tokio::task::spawn_blocking(move || {
-            run_agent_blocking(&vault_path, &thread_path, &session_key_owned, event_tx, deep_think_flag_clone)
+            run_agent_blocking(&vault_path, &thread_path, &session_key_owned, event_tx, deep_think_flag_clone, engine_override)
         })
         .await
         .context("agent task panicked")?;
@@ -544,13 +606,17 @@ fn run_agent_blocking(
     _session_key: &str,
     event_sink: std::sync::mpsc::Sender<crate::agent::AgentEvent>,
     deep_think_running: Arc<AtomicBool>,
+    engine_override: Option<crate::engine::EngineKind>,
 ) -> Result<String> {
     use crate::agent::{run_agent_loop, AgentConfig};
     use crate::chat::load_system_prompt;
 
     dotenvy::dotenv().ok();
 
-    let client = crate::engine::create_engine()?;
+    let client = match engine_override {
+        Some(kind) => crate::engine::create_engine_of_kind(kind)?,
+        None => crate::engine::create_engine()?,
+    };
 
     let system_prompt = load_system_prompt(vault_path)?;
     let mut messages = vec![json!({"role": "system", "content": system_prompt})];
@@ -582,6 +648,11 @@ fn run_agent_blocking(
         }
     }
 
+    let engine_name = engine_override
+        .map(|k| k.as_str().to_string())
+        .or_else(|| crate::engine::resolve_engine_kind().ok().map(|k| k.as_str().to_string()));
+    let model_name = Some(client.model().to_string());
+
     let config = AgentConfig {
         vault_path: vault_path.to_path_buf(),
         thread_path: thread_path.to_path_buf(),
@@ -590,6 +661,8 @@ fn run_agent_blocking(
         tool_filter: None,
         event_sink: Some(event_sink),
         deep_think_running,
+        engine_name,
+        model_name,
     };
 
     let final_messages = run_agent_loop(&config, messages, client.as_ref())?;

@@ -18,11 +18,55 @@ pub struct ChatResponse {
 }
 
 /// Which wire protocol to use.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EngineKind {
     OpenAI,
     Anthropic,
     Gemini,
+}
+
+impl EngineKind {
+    /// All known engine kinds.
+    pub const ALL: [EngineKind; 3] = [EngineKind::OpenAI, EngineKind::Anthropic, EngineKind::Gemini];
+
+    /// Check if this engine has an API key configured in the environment.
+    pub fn is_available(self) -> bool {
+        let key_var = match self {
+            EngineKind::OpenAI => "OPENAI_API_KEY",
+            EngineKind::Anthropic => "ANTHROPIC_API_KEY",
+            EngineKind::Gemini => "GEMINI_API_KEY",
+        };
+        env::var("LLM_API_KEY").is_ok() || env::var(key_var).is_ok()
+    }
+
+    /// Return the string name for this engine kind.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EngineKind::OpenAI => "openai",
+            EngineKind::Anthropic => "anthropic",
+            EngineKind::Gemini => "gemini",
+        }
+    }
+
+    /// Parse from string.
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "openai" => Some(EngineKind::OpenAI),
+            "anthropic" => Some(EngineKind::Anthropic),
+            "gemini" => Some(EngineKind::Gemini),
+            _ => None,
+        }
+    }
+
+    /// Get default config for this engine (model, base_url) without requiring API key.
+    pub fn defaults(self) -> (&'static str, &'static str) {
+        match self {
+            EngineKind::OpenAI => ("gpt-5-mini-2025-08-07", "https://api.openai.com"),
+            EngineKind::Anthropic => ("claude-sonnet-4-20250514", "https://api.anthropic.com"),
+            EngineKind::Gemini => ("gemini-2.0-flash", "https://generativelanguage.googleapis.com"),
+        }
+    }
 }
 
 /// Chat completion engine — one implementation per wire protocol.

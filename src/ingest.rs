@@ -110,6 +110,8 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
         kind: "ingest".into(),
         agent: Some("ingest".into()),
         model: None,
+        engine: None,
+        base_url: None,
     }))?;
 
     // Load ingestion system prompt
@@ -143,6 +145,8 @@ pub fn run_ingest(options: IngestOptions) -> Result<IngestResult> {
         ]),
         event_sink: None,
         deep_think_running: Arc::new(AtomicBool::new(false)),
+        engine_name: None,
+        model_name: None,
     };
 
     // Snapshot proposal count before ingestion

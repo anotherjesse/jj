@@ -13,7 +13,7 @@ use crate::git_utils::git_commit;
 use crate::knowledge::{apply_patch, read_doc, KnowledgePatch};
 use crate::engine::{ChatResponse, Engine};
 use crate::thread_store::{
-    append_event, build_event, create_thread, read_thread, EventType, Role,
+    append_event, build_event, build_event_with_engine, create_thread, read_thread, EventType, Role,
 };
 use crate::vault::init_vault;
 
@@ -47,6 +47,10 @@ pub struct AgentConfig {
     pub event_sink: Option<std::sync::mpsc::Sender<AgentEvent>>,
     /// Flag indicating whether a deep_think background task is running.
     pub deep_think_running: Arc<AtomicBool>,
+    /// Engine name for per-message attribution (e.g. "openai", "anthropic").
+    pub engine_name: Option<String>,
+    /// Model name for per-message attribution.
+    pub model_name: Option<String>,
 }
 
 pub fn run_agent_loop(
@@ -81,7 +85,7 @@ pub fn run_agent_loop(
             } else if !content.is_empty() {
                 println!("{content}");
             }
-            let event = build_event(
+            let event = build_event_with_engine(
                 None,
                 EventType::AssistantMessage,
                 Role::Assistant,
@@ -90,6 +94,8 @@ pub fn run_agent_loop(
                 None,
                 None,
                 None,
+                config.engine_name.clone(),
+                config.model_name.clone(),
             );
             append_event(&config.thread_path, event)?;
             messages.push(json!({"role": "assistant", "content": content}));
@@ -122,7 +128,7 @@ pub fn run_agent_loop(
                 .unwrap_or("llm_tool_call")
                 .to_string();
 
-            let tool_call_event = build_event(
+            let tool_call_event = build_event_with_engine(
                 None,
                 EventType::ToolCall,
                 Role::Assistant,
@@ -131,6 +137,8 @@ pub fn run_agent_loop(
                 Some(call.arguments.clone()),
                 None,
                 Some(reason),
+                config.engine_name.clone(),
+                config.model_name.clone(),
             );
             append_event(&config.thread_path, tool_call_event)?;
 
@@ -863,6 +871,8 @@ fn deep_think_background(
         ]),
         event_sink: None,
         deep_think_running: Arc::new(AtomicBool::new(false)),
+        engine_name: None,
+        model_name: None,
     };
 
     let final_messages = run_agent_loop(&inner_config, deep_messages, client.as_ref())?;

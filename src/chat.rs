@@ -25,6 +25,7 @@ pub struct ChatOptions {
     pub vault: Option<PathBuf>,
     pub thread: Option<PathBuf>,
     pub model: Option<String>,
+    pub engine: Option<String>,
     pub allow_commit: bool,
     pub history: usize,
     pub direct: bool,
@@ -51,7 +52,13 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
         init_vault(&vault)?;
     }
 
-    let mut engine = crate::engine::create_engine()?;
+    let mut engine = if let Some(ref engine_name) = options.engine {
+        let kind = crate::engine::EngineKind::from_str_opt(engine_name)
+            .ok_or_else(|| anyhow!("unknown engine: {engine_name}. Valid: openai, anthropic, gemini"))?;
+        crate::engine::create_engine_of_kind(kind)?
+    } else {
+        crate::engine::create_engine()?
+    };
     // CLI --model flag overrides engine default
     if let Some(ref model_override) = options.model {
         engine.set_model(model_override.clone());
@@ -69,6 +76,8 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
             kind: "chat".into(),
             agent: Some("j".into()),
             model: Some(model.clone()),
+            engine: None,
+            base_url: None,
         }))?,
     };
 
@@ -128,6 +137,8 @@ fn run_chat_direct(options: ChatOptions) -> Result<()> {
             tool_filter: None,
             event_sink: None,
             deep_think_running: deep_think_flag.clone(),
+            engine_name: None,
+            model_name: Some(model.clone()),
         };
         messages = run_agent_loop(&config, messages, engine.as_ref())?;
     }

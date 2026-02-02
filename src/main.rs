@@ -73,6 +73,9 @@ enum Commands {
         /// Override the LLM model
         #[arg(long)]
         model: Option<String>,
+        /// Override the LLM engine (openai, anthropic, gemini)
+        #[arg(long)]
+        engine: Option<String>,
         /// Allow the agent to commit changes to git
         #[arg(long, default_value_t = false)]
         allow_commit: bool,
@@ -432,6 +435,7 @@ async fn main() -> Result<()> {
             thread,
             last,
             model,
+            engine,
             allow_commit,
             history,
             direct,
@@ -449,6 +453,7 @@ async fn main() -> Result<()> {
                 vault,
                 thread,
                 model,
+                engine,
                 allow_commit,
                 history,
                 direct,

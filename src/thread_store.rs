@@ -47,6 +47,10 @@ pub struct ThreadEvent {
     pub tool_result: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub engine: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,6 +62,10 @@ pub struct ThreadHeader {
     pub agent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub engine: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -65,6 +73,8 @@ pub struct ThreadMeta {
     pub kind: String,
     pub agent: Option<String>,
     pub model: Option<String>,
+    pub engine: Option<String>,
+    pub base_url: Option<String>,
 }
 
 pub fn create_thread(
@@ -91,6 +101,8 @@ pub fn create_thread(
         kind: "chat".into(),
         agent: None,
         model: None,
+        engine: None,
+        base_url: None,
     });
     let header = ThreadHeader {
         j_thread: true,
@@ -98,6 +110,8 @@ pub fn create_thread(
         kind: meta.kind,
         agent: meta.agent,
         model: meta.model,
+        engine: meta.engine,
+        base_url: meta.base_url,
         created_at: Utc::now(),
     };
     let header_json = serde_json::to_string(&header)?;
@@ -186,6 +200,36 @@ pub fn build_event(
         tool_args,
         tool_result,
         reason,
+        engine: None,
+        model: None,
+    }
+}
+
+pub fn build_event_with_engine(
+    thread_id: Option<String>,
+    event_type: EventType,
+    role: Role,
+    content: Option<Value>,
+    tool_name: Option<String>,
+    tool_args: Option<Value>,
+    tool_result: Option<Value>,
+    reason: Option<String>,
+    engine: Option<String>,
+    model: Option<String>,
+) -> ThreadEvent {
+    ThreadEvent {
+        thread_id: thread_id.unwrap_or_default(),
+        event_id: format!("evt_{}", Ulid::new()),
+        ts: Utc::now(),
+        event_type,
+        role,
+        content,
+        tool_name,
+        tool_args,
+        tool_result,
+        reason,
+        engine,
+        model,
     }
 }
 

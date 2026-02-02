@@ -19,8 +19,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monos
 .session-key { font-size: 13px; font-weight: 600; color: #f0f6fc; cursor: pointer; }
 .session-key:hover { text-decoration: underline; }
 .session-meta { font-size: 11px; color: #8b949e; margin-top: 2px; }
+.session-engine-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #30363d; color: #8b949e; margin-top: 3px; }
 #main { flex: 1; display: flex; flex-direction: column; }
-#chat-header { padding: 12px 16px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; }
+#chat-header { padding: 12px 16px; border-bottom: 1px solid #30363d; font-size: 13px; color: #8b949e; display: flex; align-items: center; gap: 12px; }
+#engine-selector { background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 4px 8px; color: #c9d1d9; font-size: 12px; font-family: inherit; outline: none; cursor: pointer; }
+#engine-selector:focus { border-color: #58a6ff; }
+#engine-selector option { background: #161b22; }
 #messages { flex: 1; overflow-y: auto; padding: 16px; }
 .message { margin-bottom: 12px; max-width: 80%; }
 .message.user { margin-left: auto; }
@@ -30,6 +34,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monos
 .message.assistant .bubble { background: #21262d; color: #c9d1d9; }
 .message.system .bubble { background: #1c1c1c; color: #8b949e; font-size: 12px; font-style: italic; }
 .message.tool .bubble { background: #1a1e24; color: #7ee787; font-size: 12px; border: 1px solid #30363d; }
+.msg-engine { font-size: 10px; color: #8b949e; margin-top: 2px; opacity: 0.7; }
+#dashboard { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+#dashboard h2 { font-size: 20px; color: #f0f6fc; margin-bottom: 8px; }
+#dashboard p { font-size: 13px; color: #8b949e; margin-bottom: 24px; }
+#engine-table { border-collapse: collapse; width: 100%; max-width: 600px; }
+#engine-table th, #engine-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #21262d; font-size: 13px; }
+#engine-table th { color: #8b949e; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+#engine-table td { color: #c9d1d9; }
+.engine-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.engine-status.available { background: #3fb950; }
+.engine-status.unavailable { background: #484f58; }
+.engine-active { color: #58a6ff; font-weight: 600; }
+.engine-row { cursor: pointer; }
+.engine-row:hover { background: #1c2128; }
+.engine-row.active-engine { background: #1f6feb11; }
 #input-area { padding: 12px 16px; border-top: 1px solid #30363d; display: flex; gap: 8px; }
 #input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #c9d1d9; font-size: 14px; font-family: inherit; outline: none; }
 #input:focus { border-color: #58a6ff; }
@@ -53,7 +72,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monos
 </div>
 
 <div id="main">
-  <div id="chat-header">Select or create a session</div>
+  <div id="chat-header">
+    <span id="header-text">Select or create a session</span>
+    <select id="engine-selector" style="display:none"></select>
+  </div>
+  <div id="dashboard" style="display:none"></div>
   <div id="messages"></div>
   <div id="input-area">
     <input id="input" type="text" placeholder="Type a message..." disabled>
@@ -71,6 +94,8 @@ let currentSession = null;
 let draftMode = false;
 let pendingRequests = {};
 let reqCounter = 0;
+let engineList = []; // cached engine.list result
+let currentSessionEngine = null; // engine for the active session
 
 function genId() { return 'r' + (++reqCounter); }
 
@@ -103,9 +128,11 @@ function connect() {
     if (msg.type === 'res' && msg.id === '0') {
       if (msg.ok) {
         setStatus(true, 'Connected');
+        loadEngines();
         loadSessions();
         const resumeSession = new URLSearchParams(location.search).get('session');
         if (resumeSession) openSession(resumeSession);
+        else showDashboard();
       } else {
         setStatus(false, 'Auth failed: ' + (msg.error?.message || '?'));
       }
@@ -139,6 +166,92 @@ function send(method, params) {
   });
 }
 
+// --- Engine management ---
+
+async function loadEngines() {
+  try {
+    const result = await send('engine.list', {});
+    engineList = result.engines || [];
+    populateEngineSelector();
+  } catch (_) {}
+}
+
+function populateEngineSelector() {
+  const sel = $('#engine-selector');
+  sel.innerHTML = '';
+  engineList.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.engine;
+    opt.textContent = e.engine + (e.available ? '' : ' (no key)');
+    opt.disabled = !e.available;
+    if (e.active && !currentSessionEngine) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (currentSessionEngine) sel.value = currentSessionEngine;
+}
+
+$('#engine-selector').onchange = async function() {
+  const engine = this.value;
+  if (!currentSession) return;
+  try {
+    const result = await send('engine.set', { session_key: currentSession, engine });
+    currentSessionEngine = result.engine;
+  } catch (e) {
+    addMessage('system', 'Engine switch failed: ' + e.message);
+    // revert selector
+    if (currentSessionEngine) this.value = currentSessionEngine;
+  }
+};
+
+function showDashboard() {
+  $('#messages').style.display = 'none';
+  const dash = $('#dashboard');
+  dash.style.display = 'flex';
+  dash.innerHTML = '';
+
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Engines';
+  dash.appendChild(h2);
+
+  const p = document.createElement('p');
+  p.textContent = 'Available LLM engines and their configuration';
+  dash.appendChild(p);
+
+  const table = document.createElement('table');
+  table.id = 'engine-table';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th>Engine</th><th>Status</th><th>Model</th><th>Base URL</th></tr>';
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  engineList.forEach(e => {
+    const tr = document.createElement('tr');
+    tr.className = 'engine-row' + (e.active ? ' active-engine' : '');
+    const statusClass = e.available ? 'available' : 'unavailable';
+    const statusText = e.available ? 'Available' : 'No API key';
+    const nameClass = e.active ? ' engine-active' : '';
+    // Truncate base URL for display
+    let displayUrl = e.base_url || '';
+    try { displayUrl = new URL(displayUrl).hostname; } catch(_) {}
+    tr.innerHTML = `<td class="${nameClass}">${esc(e.engine)}${e.active ? ' *' : ''}</td><td><span class="engine-status ${statusClass}"></span>${statusText}</td><td>${esc(e.model)}</td><td>${esc(displayUrl)}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  dash.appendChild(table);
+
+  $('#header-text').textContent = 'Engine Dashboard';
+  $('#engine-selector').style.display = 'none';
+  $('#input').disabled = true;
+  $('#send').disabled = true;
+}
+
+function hideDashboard() {
+  $('#dashboard').style.display = 'none';
+  $('#messages').style.display = '';
+}
+
+// --- Events ---
+
 function handleEvent(msg) {
   const event = msg.event;
   const payload = msg.payload || {};
@@ -166,7 +279,7 @@ function handleEvent(msg) {
       const name = payload.tool_name || 'tool';
       const args = payload.arguments || {};
       const detail = args.query || args.doc_path || args.prompt || args.source || '';
-      const short = detail.length > 80 ? detail.slice(0, 80) + '…' : detail;
+      const short = detail.length > 80 ? detail.slice(0, 80) + '...' : detail;
       addMessage('tool', short ? `[${name}: ${short}]` : `[${name}]`);
       break;
     }
@@ -202,13 +315,19 @@ function updateSessionTitle(sessionKey, title) {
   });
 }
 
-function addMessage(role, text) {
+function addMessage(role, text, engineInfo) {
   const div = document.createElement('div');
   div.className = 'message ' + role;
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = text;
   div.appendChild(bubble);
+  if (engineInfo) {
+    const badge = document.createElement('div');
+    badge.className = 'msg-engine';
+    badge.textContent = engineInfo;
+    div.appendChild(badge);
+  }
   $('#messages').appendChild(div);
   $('#messages').scrollTop = $('#messages').scrollHeight;
 }
@@ -250,6 +369,8 @@ function finalizeDelta(text) {
   }
 }
 
+// --- Sessions ---
+
 async function loadSessions() {
   const result = await send('session.list', {});
   const list = result.sessions || [];
@@ -265,7 +386,9 @@ function renderSessionList(sessions) {
     div.className = 'session-item' + (s.session_key === currentSession ? ' active' : '');
     const displayName = s.title || s.first_user_line || s.session_key;
     div.dataset.sessionKey = s.session_key;
-    div.innerHTML = `<div class="session-key">${esc(displayName)}</div><div class="session-meta">${esc(s.thread_id)}</div>`;
+    let meta = esc(s.thread_id);
+    if (s.engine) meta += ` | ${esc(s.engine)}`;
+    div.innerHTML = `<div class="session-key">${esc(displayName)}</div><div class="session-meta">${meta}</div>`;
     div.onclick = () => openSession(s.session_key);
     el.appendChild(div);
   });
@@ -273,14 +396,22 @@ function renderSessionList(sessions) {
 
 async function openSession(key) {
   currentSession = key;
+  hideDashboard();
   // Persist session in URL for refresh
   const url = new URL(location.href);
   url.searchParams.set('session', key);
   history.replaceState(null, '', url.toString());
 
-  await send('session.open', { session_key: key });
+  const result = await send('session.open', { session_key: key });
 
-  $('#chat-header').textContent = 'Session: ' + key;
+  // Set engine selector to this session's engine
+  currentSessionEngine = result.engine || null;
+  if (currentSessionEngine) {
+    $('#engine-selector').value = currentSessionEngine;
+  }
+
+  $('#header-text').textContent = 'Session: ' + key;
+  $('#engine-selector').style.display = '';
   $('#messages').innerHTML = '';
   $('#input').disabled = false;
   $('#send').disabled = false;
@@ -293,9 +424,11 @@ async function openSession(key) {
       const ev = JSON.parse(line);
       const content = typeof ev.content === 'string' ? ev.content : (ev.content ? JSON.stringify(ev.content) : '');
       if (!content) return;
+      // Build engine attribution string
+      const engineInfo = (ev.engine || ev.model) ? [ev.engine, ev.model].filter(Boolean).join(' / ') : null;
       switch (ev.type) {
         case 'user_message': addMessage('user', content); break;
-        case 'assistant_message': addMessage('assistant', content); break;
+        case 'assistant_message': addMessage('assistant', content, engineInfo); break;
         case 'tool_call': addMessage('tool', `[${ev.tool_name || 'tool'}] ${JSON.stringify(ev.tool_args || {})}`); break;
         case 'system_note': addMessage('system', content); break;
       }
@@ -318,10 +451,12 @@ async function sendMessage() {
       await send('session.open', { session_key: key });
       currentSession = key;
       draftMode = false;
+      hideDashboard();
       const url = new URL(location.href);
       url.searchParams.set('session', key);
       history.replaceState(null, '', url.toString());
-      $('#chat-header').textContent = 'Session: ' + key;
+      $('#header-text').textContent = 'Session: ' + key;
+      $('#engine-selector').style.display = '';
     }
     await send('session.send', { session_key: currentSession, content: text });
     loadSessions();
@@ -334,12 +469,15 @@ $('#send').onclick = sendMessage;
 $('#input').onkeydown = (e) => { if (e.key === 'Enter') sendMessage(); };
 $('#new-session').onclick = async () => {
   currentSession = null;
+  currentSessionEngine = null;
   draftMode = true;
   deltaDiv = null;
-  $('#chat-header').textContent = 'New conversation';
+  $('#header-text').textContent = 'New conversation';
   $('#messages').innerHTML = '';
   $('#input').disabled = false;
   $('#send').disabled = false;
+  $('#engine-selector').style.display = '';
+  hideDashboard();
   // Remove session from URL
   const url = new URL(location.href);
   url.searchParams.delete('session');

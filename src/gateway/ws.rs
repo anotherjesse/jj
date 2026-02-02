@@ -250,6 +250,8 @@ async fn dispatch_method(
                             "created_at": entry.created_at,
                             "title": entry.title,
                             "first_user_line": entry.first_user_line,
+                            "engine": entry.engine,
+                            "model": entry.model,
                         }),
                     )
                 }
@@ -268,6 +270,8 @@ async fn dispatch_method(
                         "created_at": e.created_at,
                         "title": e.title,
                         "first_user_line": e.first_user_line,
+                        "engine": e.engine,
+                        "model": e.model,
                     })
                 })
                 .collect();
@@ -316,6 +320,60 @@ async fn dispatch_method(
                     };
                     protocol::Response::err(id, code, e.to_string())
                 }
+            }
+        }
+
+        "engine.list" => {
+            let current = crate::engine::resolve_engine_kind().unwrap_or(crate::engine::EngineKind::OpenAI);
+            let engines: Vec<Value> = crate::engine::EngineKind::ALL
+                .iter()
+                .map(|&kind| {
+                    let available = kind.is_available();
+                    let (default_model, default_url) = kind.defaults();
+                    let (model, base_url) = if available {
+                        match crate::engine::EngineConfig::from_env(kind) {
+                            Ok(c) => (c.model, c.base_url),
+                            Err(_) => (default_model.to_string(), default_url.to_string()),
+                        }
+                    } else {
+                        (default_model.to_string(), default_url.to_string())
+                    };
+                    json!({
+                        "engine": kind.as_str(),
+                        "available": available,
+                        "model": model,
+                        "base_url": base_url,
+                        "active": kind == current,
+                    })
+                })
+                .collect();
+            protocol::Response::ok(id, json!({ "engines": engines }))
+        }
+
+        "engine.set" => {
+            let session_key = params
+                .get("session_key")
+                .and_then(|v| v.as_str())
+                .unwrap_or("main");
+            let engine_str = params
+                .get("engine")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            match crate::engine::EngineKind::from_str_opt(engine_str) {
+                Some(kind) => {
+                    match state.sessions.set_engine(session_key, kind).await {
+                        Ok((engine, model)) => {
+                            protocol::Response::ok(id, json!({ "engine": engine, "model": model }))
+                        }
+                        Err(e) => protocol::Response::err(id, "engine.set.failed", e.to_string()),
+                    }
+                }
+                None => protocol::Response::err(
+                    id,
+                    "invalid_params",
+                    format!("unknown engine: {engine_str}. Valid: openai, anthropic, gemini"),
+                ),
             }
         }
 
